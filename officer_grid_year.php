@@ -1,4 +1,6 @@
 <?php
+// Loaded exclusively by the FaceWall WordPress plugin.
+defined('ABSPATH') || exit;
 /**
  * Helper class for BEC Facewall! module
  * 
@@ -39,12 +41,15 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
 		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
 		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 
+		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
 		ORDER BY last_name, first_name");
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 	if ($final_count == 0) {
 		$facewall_output = 'There are none';
 		return $facewall_output;
@@ -88,7 +93,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="span2">';    
 		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
 			
 			// and then the name
 			//$facewall_output .= $row->display_name;
@@ -97,26 +102,11 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
-			$facewall_output .= '<div class="text">'.$row->summary.'</div>';
+			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
 			$facewall_output .= '</div>';
 			
 			// now place their picture on the page
-			if ($row->image_URL && $row->facewall_public_84 == 1) 
-				{
-				if (!strpos($row->image_URL,"photo=")){
-					//$image = substr($row->image_URL,strrpos($row->image_URL,"/")+1);   //removed the +1 as it removed the first char of the filename
-					$image = substr($row->image_URL,strrpos($row->image_URL,"tn_")+3);   //as the source imageURL includes tn_xxxx we strip the first 3 char
-
-				}else{
-					$image = substr($row->image_URL,strpos($row->image_URL,"photo=")+6);
-				}
-				// check for existance of correct thumbnail, if one doesn't exist then create it
-			 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-				$facewall_output .= '<img src=\wp\wp-content\uploads\civicrm\custom\tn\174'.'\\' .$row->image_URL. ' class="fw_image" height="205" width="174" alt='.$row->last_name.'>';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84));
 			//
 			//$facewall_output .= $image_URL;
 			// cleanup the divs and increment counters
@@ -163,7 +153,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	//$sql = "SELECT * FROM members WHERE birthdate <= '".date("Y-m-d", $lastAGM)."' AND (DATEDIFF('".date("Y-m-d", $lastAGM)."', birthdate) / 365.25) < $ageLimit";
 
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
@@ -172,13 +162,16 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
 		WHERE mtype.id <9 
 			AND status_id <4 
-			AND c.is_deceased != 1 
+			AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
 			AND DATE_SUB(\"".$lastAGM."\", INTERVAL 30 YEAR) <= birth_date
 		ORDER BY last_name, first_name");
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
@@ -218,7 +211,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="span2">';    
 		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
 			
 			// and then the name
 			//$facewall_output .= $row->display_name;
@@ -227,17 +220,11 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
-			$facewall_output .= '<div class="text">'.$row->summary.'</div>';
+			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
 			$facewall_output .= '</div>';
 			
 			// now place their picture on the page
-			if ($row->image_URL)
-				{
-				$facewall_output .= '<img src=\wp\wp-content\uploads\civicrm\custom\tn\174'.'\\' .$row->image_URL. ' class="fw_image" height="205" width="174" alt='.$row->last_name.'>';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84));
 				//
 			// $facewall_output .= $image_URL;
 			// cleanup the divs and increment counters
@@ -273,19 +260,22 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, hist.image_URL, hist.summary
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, hist.image_URL, hist.summary
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
 		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
 		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
 		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1
+		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
 		ORDER BY mem.join_date, last_name, first_name");
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
@@ -371,9 +361,9 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="span2">';    
 		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$result.'<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.$row->first_name.' '.$row->last_name.'</h5>';
-			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$num_years.' years '.$num_months.' months<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.$row->first_name.' '.$row->last_name.'</h5>';
-			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->join_date.'<br>'.$row->first_name.' '.$row->last_name.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$result.'<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
+			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$num_years.' years '.$num_months.' months<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
+			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->join_date.'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
 
 			
 			// and then the name
@@ -383,17 +373,11 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
-			$facewall_output .= '<div class="text">'.$row->summary.'</div>';
+			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
 			$facewall_output .= '</div>';
 			
 			// now place their picture on the page
-			if ($row->image_URL)
-				{
-				$facewall_output .= '<img src=\wp\wp-content\uploads\civicrm\custom\tn\174'.'\\' .$row->image_URL. ' class="fw_image" height="205" width="174" alt='.$row->last_name.'>';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84));
 				//
 			//$facewall_output .= $image_URL;
 			// cleanup the divs and increment counters
@@ -435,12 +419,16 @@ function display_all_membership()
 	
 	global $wpdb;
 	$facewall_output = '';
-	$final_query = ("SELECT * FROM civicrm_BEC_historical_summary
-		ORDER BY id DESC");
+	$final_query = ("SELECT hist.* FROM civicrm_BEC_historical_summary AS hist
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
+		ORDER BY hist.id DESC");
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	// $current_mem_num = max(array_column($final, 'mem_num'))+1;
@@ -481,26 +469,20 @@ function display_all_membership()
 			$facewall_output .= '<div class="span2">';    
 		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->id.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->id).'</h5>';
 			
 			// and then the name
-			$facewall_output .= $row->display_name;
+			$facewall_output .= facewall_h($row->display_name);
 			$facewall_output .= '</div>';
 			$facewall_output .= '<div class="pull-left item-image">';
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
-			$facewall_output .= '<div class="text">'.$row->summary.'</div>';
+			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
 			$facewall_output .= '</div>';
 			
 			// now place their picture on the page
-			if ($row->image_URL)
-				{
-				$facewall_output .= '<img src=\wp\wp-content\uploads\civicrm\custom\tn\174'.'\\' .$row->image_URL. ' class="fw_image" loading=lazy height="205" width="174" alt='.$row->display_name.'>';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row->image_URL, $row->display_name, true);
 				//
 			//$facewall_output .= $image_URL;
 			// cleanup the divs and increment counters
@@ -640,14 +622,18 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 	$final_query = ("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight
-		FROM civicrm_BEC_historical_officer_membership  
+		FROM civicrm_BEC_historical_officer_membership AS hist
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
 		WHERE `club_year` <= YEAR(CURDATE())
 		ORDER BY club_year DESC, weight ASC;
 		");
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the max year value in the data
 	$club_year = max(array_column($final, 'club_year'));
@@ -659,13 +645,13 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 			
 			if ($row2->club_year != $club_year)
 			{
-				$club_year--;
+				$club_year = (int) $row2->club_year;
 				$facewall_output .= '<h2>'.$club_year.'</h2>';
 
 			} 
 			//$facewall_output .= $row2->club_year. ' ' ;		
 			
-			$facewall_output .= '       '.$row2->display_name. ' - '.$row2->post;
+			$facewall_output .= '       '.facewall_h($row2->display_name). ' - '.facewall_h($row2->post);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 
@@ -766,14 +752,18 @@ function display_officer_grid_year($year)
 
 
 	$final_query = ("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL
-		FROM civicrm_BEC_historical_officer_membership  
+		FROM civicrm_BEC_historical_officer_membership AS hist
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
 		WHERE `club_year` ".$fw_year." ".$search_year."
 		ORDER BY club_year DESC, weight ASC;
 		");
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the max year value in the data
 	$club_year = max(array_column($final, 'club_year'));
@@ -814,7 +804,7 @@ function display_officer_grid_year($year)
 			// handle the year first
 			if ($row2->club_year != $club_year)
 			{
-				$club_year--;
+				$club_year = (int) $row2->club_year;
 
 				// once again we need to pad out any missing divss in the row
 				$facewall_output .= facewall_pad_grid($column, $max_column, '');
@@ -850,10 +840,10 @@ function display_officer_grid_year($year)
 					break;
 			}
 
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$display_post.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($display_post).'</h5>';
 			
 			// and then the name
-			$facewall_output .= '       '.$row2->display_name;
+			$facewall_output .= '       '.facewall_h($row2->display_name);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 
@@ -900,20 +890,7 @@ function display_officer_grid_year($year)
 
 			
 			// now place their picture on the page
-			if ($row2->image_URL)
-				{
-				if (!strpos($row2->image_URL,"photo=")){
-					$image = substr($row2->image_URL,strrpos($row2->image_URL,"/")+1);
-				}else{
-					$image = substr($row2->image_URL,strpos($row2->image_URL,"photo=")+6);
-				}
-				// check for existance of correct thumbnail, if one doesn't exist then create it
-			 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-					$facewall_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' height="205" width="174" alt="'.$row2->display_name.'">';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row2->image_URL, $row2->display_name, true);
 			// cleanup the divs and increment counters
 
 			$facewall_output .= '</a>';
@@ -1040,9 +1017,22 @@ function build_officer_historical_table()
 							$mem_club_year = $x;
 						}
 					}
-				$insert = ("INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL)
-					VALUES ('$row->cv_contact_id', '$row->cv_display_name', '$row->cv_post', '$mem_club_year', '$row->cv_join_date', '$row->cv_start_date', '$row->cv_end_date', '$row->cv_weight', '$row->cv_image_URL')");
-				$insert_result = $wpdb->get_results($insert);
+				$insert = $wpdb->prepare(
+					"INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL) VALUES (%d, %s, %s, %d, %s, %s, %s, %d, %s)",
+					(int) $row->cv_contact_id,
+					(string) $row->cv_display_name,
+					(string) $row->cv_post,
+					(int) $mem_club_year,
+					(string) $row->cv_join_date,
+					(string) $row->cv_start_date,
+					(string) $row->cv_end_date,
+					(int) $row->cv_weight,
+					(string) $row->cv_image_URL
+				);
+				if ($wpdb->query($insert) === false) {
+					error_log('Facewall: officer history insert failed for contact ' . (int) $row->cv_contact_id . ': ' . $wpdb->last_error);
+					return 'build_officer_historical_table - failed (insert)';
+				}
 				
 			}
 	}
@@ -1058,7 +1048,7 @@ function build_BEC_historical_summary_table()
 	
 	global $wpdb;
 	//  use mtype to filter out BCA and discounts
-	$query=("SELECT cust.Membership_Number AS mem_num, c.id AS contact_id, c.first_name, c.nick_name, c.last_name, CONCAT(c.first_name, ' ', c.last_name) AS display_name, c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number AS mem_num, c.id AS contact_id, c.first_name, c.nick_name, c.last_name, CONCAT(c.first_name, ' ', c.last_name) AS display_name, c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
 		YEAR(mem.start_date) AS 'start', 
 		YEAR(mem.end_date) AS 'end'
 		from civicrm_contact AS c
@@ -1120,22 +1110,15 @@ function build_BEC_historical_summary_table()
 			$memberships = consolidateArray($memberships);
 
 
-			// fix the details of the image_URL
-			if ($row->image_URL)
-				{
-				if (!strpos($row->image_URL,"photo=")){
-					$image = substr($row->image_URL,strrpos($row->image_URL,"/")+1);
-				}else{
-					$image = substr($row->image_URL,strpos($row->image_URL,"photo=")+6);
-				}
-				// check for existance of correct thumbnail, if one doesn't exist then create it
-			 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-				$new_image_URL = 'tn_'.$image;
-			}
-			else{
+			// The cron may generate thumbnails only for affirmative FaceWall opt-ins.
+			$photo_name = facewall_image_filename($row->image_URL);
+			if (facewall_is_public($row->facewall_public_84) &&
+				$photo_name !== '' &&
+				facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name)) {
+				$new_image_URL = 'tn_' . $photo_name;
+			} else {
 				$new_image_URL = '';
 			}
-
 
 			// work out the summary info
 			$summary = '';

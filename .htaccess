@@ -1,6 +1,6 @@
-cat <<'EOF' > .htaccess
-<DirectoryMatch "^/.*/\.git/">
+# Prevent direct HTTP access to source, logs, authentication and generated
+# reports stored in the FaceWall plugin directory (Apache 2.4+).
+# WordPress can still include plugin PHP files normally from the filesystem.
+<FilesMatch "\.(php|phtml|phar|pdf|log|txt|sql|bak|ini|env)$">
     Require all denied
-</DirectoryMatch>
-EOF
-
+</FilesMatch>

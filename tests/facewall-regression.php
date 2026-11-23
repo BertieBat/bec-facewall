@@ -1,4 +1,6 @@
 <?php
+// Simulate the WordPress bootstrap guard without loading a WordPress site.
+if (!defined('ABSPATH')) { define('ABSPATH', __DIR__ . '/../'); }
 /**
  * Small, dependency-free regression check for the FaceWall cron PHP fatal
  * and the historical membership duplicate-key insert.
