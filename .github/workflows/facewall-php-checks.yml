@@ -1,0 +1,30 @@
+name: FaceWall PHP checks
+
+on:
+  pull_request:
+    paths:
+      - 'facewall.php'
+      - 'membership_list.php'
+      - 'officer_grid_year.php'
+      - 'tests/**'
+      - '.github/workflows/facewall-php-checks.yml'
+  workflow_dispatch:
+
+jobs:
+  php-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Check PHP syntax
+        run: |
+          php -l facewall.php
+          php -l membership_list.php
+          php -l officer_grid_year.php
+          php -l tests/facewall-regression.php
+      - name: Run FaceWall regressions
+        run: php tests/facewall-regression.php

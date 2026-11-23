@@ -41,9 +41,16 @@ function facewall_menu() {
 add_action("admin_menu", "facewall_menu");
 
 function modify_database_table_cron_job() {
-	//cron job that can be called from Wordpress as a hook
-	
-	global $wpdb;
+    // Serialize rebuilds so two jobs cannot truncate and refill the same tables together.
+    global $wpdb;
+    $lock_name = 'bec_facewall_rebuild_' . get_current_blog_id();
+    $lock_acquired = (int) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
+    if ($lock_acquired !== 1) {
+        error_log('Facewall: skipped concurrent rebuild (or database lock unavailable).');
+        return;
+    }
+
+    try {
 	$tmpfilename = '/home/bertie/public_html/wp/wp-content/plugins/facewall/facewall_cron.txt'; // Temporary file location
 	$f = fopen($tmpfilename, 'a+');
 		$start_time = microtime(true);
@@ -70,7 +77,10 @@ function modify_database_table_cron_job() {
 		$end_time = microtime(true);
 		$execution_time = ($end_time - $start_time);
 		fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
-	fclose($f);
+    fclose($f);
+    } finally {
+        $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock_name));
+    }
 }
 add_action( 'facewall_cron', 'modify_database_table_cron_job' );
 
@@ -167,12 +177,12 @@ function facewall_action($atts = [], $content = null, $tag = '' ){
 
 //add_shortcode('facewall','current_list');
 
-include "current_list.php";
+require_once __DIR__ . '/current_list.php';
 //include "officer_list.php";
-include "officer_grid_year.php";
-include "membership_list.php";
-include "poster.php";
-include "membership_fees.php";
+require_once __DIR__ . '/officer_grid_year.php';
+require_once __DIR__ . '/membership_list.php';
+require_once __DIR__ . '/poster.php';
+require_once __DIR__ . '/membership_fees.php';
 
 
 //-----------------------------------------------------------------------------
