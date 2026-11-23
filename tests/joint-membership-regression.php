@@ -1,4 +1,6 @@
 <?php
+// Simulate the WordPress bootstrap guard without loading a WordPress site.
+if (!defined('ABSPATH')) { define('ABSPATH', __DIR__ . '/../'); }
 /**
  * Joint-members regression checks.
  * Run with: php tests/joint-membership-regression.php
