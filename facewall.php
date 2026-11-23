@@ -256,16 +256,50 @@ function admin_historical_membership_list(){
 	echo display_membership_list($fw_title, $fw_mem_status, $fw_mem_type);
 }
 
-function admin_poster(){
-	echo create_poster($fw_title, 'A1');
+/**
+ * Display an administrator-only link. Stream the PDF from admin-post.php before
+ * any wp-admin HTML headers are sent, with a nonce to prevent CSRF.
+ */
+function facewall_admin_poster_page($sheet_size) {
+    if (!current_user_can('manage_options')) {
+        wp_die('You do not have permission to download this poster.');
+    }
+    $download_url = wp_nonce_url(
+        add_query_arg([
+            'action' => 'facewall_download_poster',
+            'size' => $sheet_size,
+        ], admin_url('admin-post.php')),
+        'facewall_download_poster'
+    );
+    echo '<div class="wrap"><h1>FaceWall ' . esc_html($sheet_size)
+        . ' poster</h1><p>Downloads include only consenting FaceWall members.</p>'
+        . '<p><a class="button button-primary" href="' . esc_url($download_url)
+        . '">Download PDF poster</a></p></div>';
 }
 
-function admin_poster_RA1(){
-	echo create_poster($fw_title, 'RA1');
+function admin_poster() {
+    facewall_admin_poster_page('A1');
+}
+function admin_poster_RA1() {
+    facewall_admin_poster_page('RA1');
+}
+function admin_poster_SRA1() {
+    facewall_admin_poster_page('SRA1');
 }
 
-function admin_poster_SRA1(){
-	echo create_poster($fw_title, 'SRA1');
+function facewall_handle_poster_download() {
+    if (!current_user_can('manage_options')) {
+        wp_die('You do not have permission to download this poster.');
+    }
+    check_admin_referer('facewall_download_poster');
+    $size = isset($_GET['size']) && is_string($_GET['size'])
+        ? strtoupper(sanitize_key(wp_unslash($_GET['size']))) : '';
+    if (!in_array($size, ['A1', 'RA1', 'SRA1'], true)) {
+        wp_die('Invalid FaceWall poster size.');
+    }
+    create_poster('', $size);
+    exit;
 }
+add_action('admin_post_facewall_download_poster', 'facewall_handle_poster_download');
 
 ?>
