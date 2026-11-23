@@ -69,6 +69,9 @@ jobs:
             '+refs/heads/*:refs/remotes/origin/*' \
             '+refs/tags/*:refs/tags/*'
           git fetch --no-tags origin '+refs/pull/*/head:refs/pull/*/head'
+          [[ "$(git rev-parse refs/remotes/origin/main)" == "$GITHUB_SHA" ]] || {
+            echo 'Remote main changed after approval; refusing to continue.' >&2; exit 1;
+          }
 
           scratch="$RUNNER_TEMP/facewall-cleaned.git"
           git init --bare "$scratch"
