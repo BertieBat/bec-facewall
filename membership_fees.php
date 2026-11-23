@@ -1,4 +1,6 @@
 <?php
+// Membership fee helpers must run under WordPress.
+defined('ABSPATH') || exit;
 
 /**
  * Used to create a table of fees and prorata by month info
