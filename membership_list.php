@@ -293,7 +293,7 @@ function show_membership_data()
 			// put in a header
 			if ($row2->club_year != $club_year)
 			{
-				$club_year--;
+				$club_year = (int) $row2->club_year;
 				//$facewall_output .= '<h2>'.$club_year.'</h2>';
 				$facewall_output .= '<h2>Club Year '.$club_year. ' - '.array_count_values(array_column($final,'club_year'))[$club_year] .' members</h2>';
 			}		
