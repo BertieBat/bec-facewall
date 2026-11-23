@@ -9,3 +9,15 @@
 .env
 *.txt
 poster_output/
+
+# Obsolete Mailman files
+/zzpluralzalpha/
+sync2mailman_*
+
+# Authentication files
+.htpasswd
+*.htpasswd
+
+# Generated logs and reports
+/facewall_cron.txt
+*.log
