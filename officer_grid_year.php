@@ -46,7 +46,10 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 	if ($final_count == 0) {
 		$facewall_output = 'There are none';
 		return $facewall_output;
@@ -165,7 +168,10 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
@@ -266,7 +272,10 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
@@ -416,7 +425,10 @@ function display_all_membership()
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the highest membership number in the data
 	// $current_mem_num = max(array_column($final, 'mem_num'))+1;
@@ -618,7 +630,10 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the max year value in the data
 	$club_year = max(array_column($final, 'club_year'));
@@ -745,7 +760,10 @@ function display_officer_grid_year($year)
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 
 	// find the max year value in the data
 	$club_year = max(array_column($final, 'club_year'));
