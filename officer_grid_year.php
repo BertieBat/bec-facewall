@@ -645,7 +645,7 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 			
 			if ($row2->club_year != $club_year)
 			{
-				$club_year--;
+				$club_year = (int) $row2->club_year;
 				$facewall_output .= '<h2>'.$club_year.'</h2>';
 
 			} 
@@ -804,7 +804,7 @@ function display_officer_grid_year($year)
 			// handle the year first
 			if ($row2->club_year != $club_year)
 			{
-				$club_year--;
+				$club_year = (int) $row2->club_year;
 
 				// once again we need to pad out any missing divss in the row
 				$facewall_output .= facewall_pad_grid($column, $max_column, '');
