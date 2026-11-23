@@ -262,7 +262,6 @@ function get_membership_data($query)
 					error_log('Facewall: historical membership insert failed for contact ' . (int) $row->cv_contact_id . ', year ' . (int) $mem_club_year . ': ' . $wpdb->last_error);
 					return false;
 				}
-/
 				
 			}
 	}
