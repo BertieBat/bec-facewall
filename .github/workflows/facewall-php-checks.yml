@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'facewall.php'
+      - 'current_list.php'
       - 'membership_list.php'
       - 'officer_grid_year.php'
       - 'tests/**'
@@ -23,8 +24,12 @@ jobs:
       - name: Check PHP syntax
         run: |
           php -l facewall.php
+          php -l current_list.php
+          php -l tests/joint-membership-regression.php
           php -l membership_list.php
           php -l officer_grid_year.php
           php -l tests/facewall-regression.php
       - name: Run FaceWall regressions
-        run: php tests/facewall-regression.php
+        run: |
+          php tests/facewall-regression.php
+          php tests/joint-membership-regression.php
