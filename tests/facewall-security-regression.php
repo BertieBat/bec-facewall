@@ -122,6 +122,12 @@ try {
 $grid_source = file_get_contents(dirname(__DIR__) . '/officer_grid_year.php');
 $poster_source = file_get_contents(dirname(__DIR__) . '/poster.php');
 $cron_source = file_get_contents(dirname(__DIR__) . '/facewall.php');
+if (strpos($cron_source, "admin_post_facewall_download_poster") === false ||
+    strpos($cron_source, "check_admin_referer('facewall_download_poster')") === false ||
+    strpos($cron_source, "current_user_can('manage_options')") === false) {
+    fail_test('PDF downloads must use a nonce-protected administrator-only endpoint');
+}
+
 $historical_source = file_get_contents(dirname(__DIR__) . '/membership_list.php');
 if (substr_count($grid_source, 'facewall_public_84 = 1') < 6) {
     fail_test('Member, historical, and officer grid SQL consent filters are incomplete');
