@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 // Add menu
 function facewall_menu() {
-    add_menu_page("Facewall", "Facewall","manage_options", "facewall_plugin", "current_list",plugins_url('/facewall/img/facewall.png'));
+    add_menu_page("Facewall", "Facewall","manage_options", "facewall_plugin", "admin_current_list",plugins_url('/facewall/img/facewall.png'));
     //add_submenu_page("facewall_plugin","Current", 		"Current",		"manage_options", "current_members", 	"admin_current_list");
     //add_submenu_page("facewall_plugin","Grace", 		"Grace",		"manage_options", "grace_members", 	"admin_grace_list");
     //add_submenu_page("facewall_plugin","LYBNTY", 		"LYBNTY",		"manage_options", "lybnty_members", 	"admin_lybnty_list");
@@ -40,44 +40,41 @@ function facewall_menu() {
 
 add_action("admin_menu", "facewall_menu");
 
+/**
+ * Rebuild FaceWall reporting data only from the registered WP-Cron hook.
+ * No public shortcode is allowed to rebuild or truncate CiviCRM tables.
+ *
+ * Use the site's normal PHP error log, not a world-readable plugin log file.
+ */
 function modify_database_table_cron_job() {
-    // Serialize rebuilds so two jobs cannot truncate and refill the same tables together.
     global $wpdb;
     $lock_name = 'bec_facewall_rebuild_' . get_current_blog_id();
     $lock_acquired = (int) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
     if ($lock_acquired !== 1) {
-        error_log('Facewall: skipped concurrent rebuild (or database lock unavailable).');
+        error_log('Facewall: scheduled rebuild skipped because a database lock is held.');
         return;
     }
 
     try {
-	$tmpfilename = '/home/bertie/public_html/wp/wp-content/plugins/facewall/facewall_cron.txt'; // Temporary file location
-	$f = fopen($tmpfilename, 'a+');
-		$start_time = microtime(true);
-
-	$line = build_chart_data_tables();
-		$end_time = microtime(true);
-		$execution_time = ($end_time - $start_time);
-		fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
-
-		$start_time = microtime(true);
-	$line = build_BEC_historical_summary_table();
-		$end_time = microtime(true);
-		$execution_time = ($end_time - $start_time);
-		fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
-
-		$start_time = microtime(true);
-	$line = build_officer_historical_table();
-		$end_time = microtime(true);
-		$execution_time = ($end_time - $start_time);
-		fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
-
-		$start_time = microtime(true);
-	$line = build_membership_list();
-		$end_time = microtime(true);
-		$execution_time = ($end_time - $start_time);
-		fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
-    fclose($f);
+        // Build reporting history before the charts which depend on it.
+        $jobs = [
+            'historical membership' => 'build_membership_list',
+            'historical summary' => 'build_BEC_historical_summary_table',
+            'officer history' => 'build_officer_historical_table',
+            'chart data' => 'build_chart_data_tables',
+        ];
+        foreach ($jobs as $label => $function) {
+            $start = microtime(true);
+            $result = $function();
+            $elapsed = round(microtime(true) - $start, 2);
+            error_log('Facewall cron: ' . $label . ': ' . (string) $result . ' (' . $elapsed . ' seconds)');
+            if (!is_string($result) || strpos($result, ' - completed') === false) {
+                error_log('Facewall: stopping scheduled rebuild after an incomplete ' . $label . ' step.');
+                break;
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('Facewall: scheduled rebuild failed: ' . $e->getMessage());
     } finally {
         $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock_name));
     }
@@ -159,7 +156,7 @@ function facewall_action($atts = [], $content = null, $tag = '' ){
 		case "officer_grid_year":
 			return display_officer_grid_year($year);
 		case "historical_membership_list":
-			return display_membership_list($fw_title, $fw_mem_status, $fw_mem_type);
+			return display_membership_list('Historical membership list', '', '');
 		case "historical_membership_grid":
 			return display_all_membership();
 		case "prorata_fees":
@@ -170,8 +167,7 @@ function facewall_action($atts = [], $content = null, $tag = '' ){
 			//return display_membership_fees();
 
 		}
-	flush();
-	return $output ;
+	return '';
 }
 
 
