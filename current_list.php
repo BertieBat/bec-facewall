@@ -513,7 +513,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		//$memberships = get_membership_info($row->near_contact_id, 0);
 		$joint_output .= '<div class="fw_middle">';
 		//$joint_output .= '<div class="text">'.$memberships.'</div>';
-    		$joint_output .= '<div class="text">'.$row->near_summary.'</div>';
+    		$joint_output .= '<div class="text">'.facewall_summary_html($row->near_summary).'</div>';
 		$joint_output .= '</div>';
 
 
@@ -532,7 +532,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 
 		//$memberships = get_membership_info($row->far_contact_id, 0);
 		$joint_output .= '<div class="fw_middle">';
-    		$joint_output .= '<div class="text">'.$row->far_summary.'</div>';
+    		$joint_output .= '<div class="text">'.facewall_summary_html($row->far_summary).'</div>';
 		$joint_output .= '</div>';
 
 		//$joint_output .= '<a>';
