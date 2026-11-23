@@ -1,4 +1,7 @@
 <?php
+// These functions must run inside WordPress.
+defined('ABSPATH') || exit;
+require_once __DIR__ . '/includes/security.php';
 /**
  * Helper class for BEC Facewall! module
  * 
@@ -240,14 +243,6 @@ function get_membership_data($query)
 
 
 
-				// we can use real-escape-string
-				// See http://php.net/manual/en/mysqli.real-escape-string.php for the
-				// list of characters mysqli_real_escape_string escapes.
-				// needed for names like Bob O'Malley White
-				$search = ["\\", "\x00", "\n", "\r", "'", '"', "\x1a"];
-				$replace = ["\\\\", "\\0", "\\n", "\\r", "\'", '\"', "\\Z"];
-				$fixed_name = str_replace($search, $replace, $row->cv_display_name);
-
 				// A unique index on club_year/contact_id prevents two rows for the same
 				// member/year. Keep the membership-log row ahead of the legacy fallback.
 				$insert_query = $wpdb->prepare(
@@ -267,12 +262,7 @@ function get_membership_data($query)
 					error_log('Facewall: historical membership insert failed for contact ' . (int) $row->cv_contact_id . ', year ' . (int) $mem_club_year . ': ' . $wpdb->last_error);
 					return false;
 				}
-
-				/**
-				$insert = ("INSERT INTO civicrm_BEC_historical_membership (contact_id, display_name, club_year, join_date, start_date, end_date, membership_type)
-					VALUES ('$row->cv_contact_id', '$fixed_name', '$mem_club_year', '', '$row->cv_start_date', '$row->cv_end_date', '$row->cv_membership_type_id')");
-				$insert_result = $wpdb->get_results($insert);
-				**/
+/
 				
 			}
 	}
@@ -285,7 +275,8 @@ function show_membership_data()
 	global $wpdb;
 	$facewall_output = '';
 	$final_query = ("SELECT contact_id, display_name, club_year, join_date, start_date, end_date, membership_type
-		FROM civicrm_BEC_historical_membership  
+		FROM civicrm_BEC_historical_membership AS history
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = history.contact_id AND consent.facewall_public_84 = 1
 		ORDER BY club_year DESC, display_name ASC 
 		");
 	// Prepare the query
@@ -305,7 +296,7 @@ function show_membership_data()
 				$facewall_output .= '<h2>Club Year '.$club_year. ' - '.array_count_values(array_column($final,'club_year'))[$club_year] .' members</h2>';
 			}		
 			// setup some variables		
-			$facewall_output .= '       '.$row2->display_name;
+			$facewall_output .= '       '.facewall_h($row2->display_name);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 			if ( date("Y",$start_time) <= '1960' )
