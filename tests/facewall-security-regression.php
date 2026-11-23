@@ -86,6 +86,28 @@ foreach ($GLOBALS['wpdb']->queries as $query) {
     }
 }
 
+// No match after applying privacy filters must never crash a public page.
+require dirname(__DIR__) . '/officer_grid_year.php';
+require dirname(__DIR__) . '/membership_list.php';
+$no_rows = [
+    display_facewall_normal_new('Current', '<4', '<8'),
+    display_facewall_under_30('Under 30', '<4', '=15'),
+    display_facewall_probationary('Probationary', '<4', '=2'),
+    display_all_membership(),
+    display_officer_list('', '', ''),
+    display_officer_grid_year('current'),
+    show_membership_data(),
+];
+foreach ($no_rows as $html) {
+    expect_security('<p>No members found.</p>', $html,
+        'Empty member, historical or officer display must not throw');
+}
+foreach (array_slice($GLOBALS['wpdb']->queries, 2) as $sql) {
+    if (strpos($sql, 'facewall_public_84 = 1') === false) {
+        fail_test('A public member SQL report is missing the FaceWall consent filter');
+    }
+}
+
 require dirname(__DIR__) . '/poster.php';
 try {
     create_poster('', 'A1');
