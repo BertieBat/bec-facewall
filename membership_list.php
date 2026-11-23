@@ -22,6 +22,9 @@
 
 global $wpdb;
 
+// Some scheduled tasks include this helper after WordPress has already loaded it.
+if (!function_exists('display_membership_list')) {
+
 function display_membership_list($fw_title, $fw_mem_status, $fw_mem_type)
 {
 	//build_membership_list();
@@ -43,8 +46,7 @@ function build_membership_list()
 			membership.membership_type_id  as cv_membership_type_id , 
 			membership.join_date  as cv_join_date , 
 			membership.start_date  as cv_start_date , 
-			membership.end_date  as cv_end_date,  
-			membership.membership_type_id AS cv_membership_type_id
+			membership.end_date  as cv_end_date
 
 		FROM civicrm_contact      
      
@@ -78,11 +80,20 @@ function build_membership_list()
 		ORDER BY cv_display_name
 		");
 
-	// We are going to store the output in a new table
-	// but first we are going to empty it
-	$truncate = $wpdb->get_results("TRUNCATE TABLE civicrm_BEC_historical_membership");
-	get_membership_data($query_log);
-	get_membership_data($query_old);
+	// Check sources before clearing the table: a database outage must not erase history.
+	$log_rows = $wpdb->get_results($query_log);
+	$old_rows = $wpdb->get_results($query_old);
+	if (!is_array($log_rows) || !is_array($old_rows) || (!$log_rows && !$old_rows)) {
+		error_log('Facewall: historical membership source unavailable; existing table retained. ' . $wpdb->last_error);
+		return 'build_membership_list - skipped (source unavailable)';
+	}
+	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_membership') === false) {
+		error_log('Facewall: historical membership TRUNCATE failed: ' . $wpdb->last_error);
+		return 'build_membership_list - failed (truncate)';
+	}
+	if (get_membership_data($log_rows) === false || get_membership_data($old_rows) === false) {
+		return 'build_membership_list - failed (insert)';
+	}
 	//return show_membership_data();
 	//
 	//chain on some other stuff
@@ -119,13 +130,13 @@ function get_membership_data($query)
 **/
 
 	//  inject the data back into a new table adding a row for every club year of membership.
-	$result = $wpdb->get_results($query);
-
-	if (!$result) 
-	{
-		$facewall_output .= '<h2>'.$fw_title.'</h2>';
-		$facewall_output .= 'no members found matching this search';  
-		return $facewall_output;
+	$result = is_array($query) ? $query : $wpdb->get_results($query);
+	if (!is_array($result)) {
+		error_log('Facewall: historical membership query failed: ' . $wpdb->last_error);
+		return false;
+	}
+	if (!$result) {
+		return 0;
 	}
 	$result_count = count($result);
 
@@ -137,11 +148,14 @@ function get_membership_data($query)
 		{
 			$facewall_output = '';
 			$row = $result[$result_index];
+			if (empty($row->cv_start_date) || strtotime($row->cv_start_date) === false) {
+				continue;
+			}
 
 			$start_date = date("Y",strtotime($row->cv_start_date));
 
 			// if the end date isn't set then set it to current year xxxx
-			if ($row->cv_end_date === null)
+			if (empty($row->cv_end_date) || $row->cv_end_date === '0000-00-00')
 				{
 				$end_date = date("Y");
 			}
@@ -234,23 +248,24 @@ function get_membership_data($query)
 				$replace = ["\\\\", "\\0", "\\n", "\\r", "\'", '\"', "\\Z"];
 				$fixed_name = str_replace($search, $replace, $row->cv_display_name);
 
-				// Check if the record already exists
-				$check_query = "SELECT * FROM civicrm_BEC_historical_membership WHERE club_year = '$mem_club_year' AND contact_id = '$row->cv_contact_id'";
-				$existing_record = $wpdb->get_results($check_query);
-
-				if (empty($existing_record)) {
- 					// Record does not exist, proceed with the INSERT query
-					$insert_query = ("INSERT INTO civicrm_BEC_historical_membership (contact_id, display_name, club_year, join_date, start_date, end_date, membership_type)
-						VALUES ('$row->cv_contact_id', '$fixed_name', '$mem_club_year', '', '$row->cv_start_date', '$row->cv_end_date', '$row->cv_membership_type_id')");
-					$insert_result = $wpdb->query($insert_query);
-
-					if ($insert_result) {
-						echo "Record inserted successfully.";
-					} else {
-						echo "Error inserting record: " . $wpdb->last_error;
-					}
-				} else {
-					echo "Record already exists.";
+				// A unique index on club_year/contact_id prevents two rows for the same
+				// member/year. Keep the membership-log row ahead of the legacy fallback.
+				$insert_query = $wpdb->prepare(
+					"INSERT INTO civicrm_BEC_historical_membership
+					 (contact_id, display_name, club_year, join_date, start_date, end_date, membership_type)
+					 VALUES (%d, %s, %d, %s, %s, NULLIF(%s, ''), %d)
+					 ON DUPLICATE KEY UPDATE contact_id = contact_id",
+					(int) $row->cv_contact_id,
+					(string) $row->cv_display_name,
+					(int) $mem_club_year,
+					'',
+					(string) $row->cv_start_date,
+					(string) $row->cv_end_date,
+					(int) $row->cv_membership_type_id
+				);
+				if ($wpdb->query($insert_query) === false) {
+					error_log('Facewall: historical membership insert failed for contact ' . (int) $row->cv_contact_id . ', year ' . (int) $mem_club_year . ': ' . $wpdb->last_error);
+					return false;
 				}
 
 				/**
@@ -261,6 +276,7 @@ function get_membership_data($query)
 				
 			}
 	}
+	return true;
 }
 //-----------------------------------------------------------------------------------------------------------------
 
@@ -354,5 +370,7 @@ function build_chart_data_tables()
 
 }
 
+
+} // End duplicate-include guard.
 
 ?>
