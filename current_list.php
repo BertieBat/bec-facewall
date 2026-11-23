@@ -552,125 +552,72 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 }
 
 
+/**
+ * Build cached thumbnails only from bounded, validated local CiviCRM images.
+ * Called by the maintenance job, never by public shortcode rendering.
+ */
 function facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image)
-	{
-	if (
-	    (!file_exists($base_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image)) 
-	or  (!file_exists($base_dir.$image_dir.$thumb_dir.'full_scale'.'/tn_'.$image))
-	) 
-		{
-		// ---------------------------------------
-		// Setup some parameters - such as the size and where
-		$name     = "/home/bertie/public_html/wp/wp-content/uploads/civicrm/custom/".$image ;
-		$filename = "/home/bertie/public_html/wp/wp-content/uploads/civicrm/custom/tn/174/tn_".$image ;
-		$filename_orig_scale = "/home/bertie/public_html/wp/wp-content/uploads/civicrm/custom/tn/full_scale/tn_".$image ;
-		$thumb_w = 174;
-		$thumb_h = 205 ;
-
-		if (!file_exists($name)) {
- 		   return "File does not exist.";
-		}
-		//-------------------------------------------
-		// $joint_output .= $image.' not found';
-
-		$extension = pathinfo($name, PATHINFO_EXTENSION);
-
-		if (preg_match("/jpg|jpeg/i",$extension)){$src_img=imagecreatefromjpeg($name);}
-		if (preg_match("/png/i"     ,$extension)){$src_img=imagecreatefrompng($name);}
-		
-		if ($src_img) {
-     		   $old_x = imagesx($src_img);
-		   $old_y = imagesy($src_img);
-		} else {
-		   return "Failed to create image from JPEG.";
-		}
-
-		$dst_img=ImageCreateTrueColor($thumb_w,$thumb_h);
-
-		$width_new = $old_y * $thumb_w / $thumb_h;
-	    	$height_new = $old_x * $thumb_h / $thumb_w;
-		//if the new width is greater than the actual width of the image, then the height is too large and the rest cut off, or vice versa
-		if($width_new > $old_x)
-			{
-	        		//cut point by height
-	        		$h_point = (int) round(($old_y - $height_new) / 2);
-		        	//copy image
-				imagecopyresampled($dst_img, $src_img,            0, 0, 0, $h_point, $thumb_w, $thumb_h, $old_x, (int) round($height_new));
-				$dst_img_orig_scale = ImageCreateTrueColor($old_x, (int) round($height_new));
-				imagecopyresampled($dst_img_orig_scale, $src_img, 0, 0, 0, $h_point, $old_x, (int) round($height_new), $old_x, (int) round($height_new));
-			}else{
-				//cut point by width
-				$w_point = (int) round(($old_x - $width_new) / 2);
-				imagecopyresampled($dst_img, $src_img,            0, 0, $w_point, 0, $thumb_w, $thumb_h, (int) round($width_new), $old_y);
-				$dst_img_orig_scale = ImageCreateTrueColor((int) round($width_new), $old_y);
-				imagecopyresampled($dst_img_orig_scale, $src_img, 0, 0, $w_point, 0, (int) round($width_new), $old_y, (int) round($width_new), $old_y);
-			}
-
-		if (preg_match("/png/i", $extension))
-			{
-				imagepng($dst_img,$filename);
-				imagepng($dst_img_orig_scale,$filename_orig_scale);
-			} else {
-				imagejpeg($dst_img,$filename); 
-				imagejpeg($dst_img_orig_scale,$filename_orig_scale);
-			}
-		imagedestroy($dst_img); 
-		imagedestroy($src_img); 
-		}
-	}
-
-//public static function populateRelationshipCache(CRM_Queue_TaskContext $ctx, $startId, $endId) {
-    	// NOTE: We duplicate CRM_Contact_BAO_RelationshipCache::$mappings in case
-	// the schema evolves over multiple releases.
-
-	//This was lifted from the file 
-	//  /public_html/wp/wp-content/plugins/civicrm/civicrm/CRM/Upgrade/Incremental/php
-	//  FiveTwentyNine.php
-
-function rebuild_RelationshipCache(){
-	// We are going to store the output in a new table
-	// but first we are going to empty it
-	global $wpdb;
-	$truncate = $wpdb->get_results("TRUNCATE TABLE civicrm_relationship_cache");
-	
-    $mappings = [
-      'a_b' => [
-        'relationship_id' => 'rel.id',
-        'relationship_type_id' => 'rel.relationship_type_id',
-        'orientation' => '"a_b"',
-        'near_contact_id' => 'rel.contact_id_a',
-        'near_relation' => 'reltype.name_a_b',
-        'far_contact_id' => 'rel.contact_id_b',
-        'far_relation' => 'reltype.name_b_a',
-        'start_date' => 'rel.start_date',
-        'end_date' => 'rel.end_date',
-        'is_active' => 'rel.is_active',
-      ],
-      'b_a' => [
-        'relationship_id' => 'rel.id',
-        'relationship_type_id' => 'rel.relationship_type_id',
-        'orientation' => '"b_a"',
-        'near_contact_id' => 'rel.contact_id_b',
-        'near_relation' => 'reltype.name_b_a',
-        'far_contact_id' => 'rel.contact_id_a',
-        'far_relation' => 'reltype.name_a_b',
-        'start_date' => 'rel.start_date',
-        'end_date' => 'rel.end_date',
-        'is_active' => 'rel.is_active',
-      ],
-    ];
-    $keyFields = ['relationship_id', 'orientation'];
-
-    foreach ($mappings as $mapping) {
-      $query = CRM_Utils_SQL_Select::from('civicrm_relationship rel')
-        ->join('reltype', 'INNER JOIN civicrm_relationship_type reltype ON rel.relationship_type_id = reltype.id')
-	->syncInto('civicrm_relationship_cache', $keyFields, $mapping)
-        ->where('rel.end_date IS NULL OR rel.end_date > CURDATE()');
-
-      $query->execute();
+{
+    if (!defined('WP_CONTENT_DIR')) {
+        return false;
     }
-
-    return TRUE;
-  }
-
-?>
+    $filename = facewall_image_filename($image);
+    if ($filename === '') {
+        return false;
+    }
+    $source_dir = realpath(WP_CONTENT_DIR . '/uploads/civicrm/custom');
+    if (!$source_dir) {
+        return false;
+    }
+    $source = realpath($source_dir . '/' . $filename);
+    if (!$source || strpos($source, $source_dir . DIRECTORY_SEPARATOR) !== 0 ||
+        !is_file($source) || filesize($source) > 15 * 1024 * 1024) {
+        return false;
+    }
+    $info = @getimagesize($source);
+    if (!$info || $info[0] < 1 || $info[1] < 1 ||
+        $info[0] * $info[1] > 24000000 ||
+        !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG], true)) {
+        return false;
+    }
+    $small_dir = $source_dir . '/tn/174';
+    $full_dir = $source_dir . '/tn/full_scale';
+    if (!is_dir($small_dir) || !is_dir($full_dir)) {
+        return false; // Directories are managed by CiviCRM/hosting, not web requests.
+    }
+    $small_path = $small_dir . '/tn_' . $filename;
+    $full_path = $full_dir . '/tn_' . $filename;
+    if (is_file($small_path) && is_file($full_path)) {
+        return true;
+    }
+    $src = $info[2] === IMAGETYPE_JPEG ? @imagecreatefromjpeg($source) : @imagecreatefrompng($source);
+    if (!$src) {
+        return false;
+    }
+    $source_w = imagesx($src);
+    $source_h = imagesy($src);
+    $width = 174;
+    $height = 205;
+    // Centre-crop without stretching the subject.
+    $crop_w = min($source_w, (int) max(1, round($source_h * $width / $height)));
+    $crop_h = min($source_h, (int) max(1, round($source_w * $height / $width)));
+    $crop_x = (int) floor(($source_w - $crop_w) / 2);
+    $crop_y = (int) floor(($source_h - $crop_h) / 2);
+    $small = imagecreatetruecolor($width, $height);
+    $full = imagecreatetruecolor($crop_w, $crop_h);
+    if (!$small || !$full) {
+        if ($small) { imagedestroy($small); }
+        if ($full) { imagedestroy($full); }
+        imagedestroy($src);
+        return false;
+    }
+    imagecopyresampled($small, $src, 0, 0, $crop_x, $crop_y, $width, $height, $crop_w, $crop_h);
+    imagecopyresampled($full, $src, 0, 0, $crop_x, $crop_y, $crop_w, $crop_h, $crop_w, $crop_h);
+    $write = $info[2] === IMAGETYPE_PNG ? 'imagepng' : 'imagejpeg';
+    $saved_small = is_file($small_path) || $write($small, $small_path);
+    $saved_full = is_file($full_path) || $write($full, $full_path);
+    imagedestroy($small);
+    imagedestroy($full);
+    imagedestroy($src);
+    return $saved_small && $saved_full;
+}
