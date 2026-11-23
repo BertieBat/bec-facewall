@@ -359,41 +359,93 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 
 }
 
-function get_membership_info($mem_id, $show_status){
-	$params = array(
-       			'contact_id'    =>  $mem_id,
-		       	//'status_id.is_current' => TRUE,
-       			'membership_type_ID' => '1'
-			   );
-	$detail = '';   	   
-	try {
-       		if ( ! function_exists( 'civicrm_initialize' ) ) { return; }
-       		civicrm_initialize();
-	        $result = civicrm_api3('membership', 'get', $params);
-	} catch (CiviCRM_API3_Exception $e) {
-	       // handle error here
-		$errorMessage = $e->getMessage();
-       		$errorCode = $e->getErrorCode();
-       		$errorData = $e->getExtraParams();
-       		return array('error' => $errorMessage, 'error_code' => $errorCode, 'error_data' => $errorData);
-    	}
-	foreach ($result[values] as $membership_id => $mem_id)
-	{
-		$mem_num_lookup = $mem_id[membership_type_id];
-		$mem_name = civicrm_api3('MembershipType', 'get', ['return' => ["name"], 'id' => $mem_num_lookup, 'sequential' => 1]);
-		$mem_status = civicrm_api3('MembershipStatus', 'get', ['return' => ["name"], 'id' => $mem_id[status_id],'sequential' => 1]);
-		$startdate = date("y",strtotime($mem_id[start_date]));
-		$enddate = date("y",strtotime($mem_id[end_date]));
-
-		$detail .= $mem_name[values][0][name]." (".$startdate."-".$enddate.") ";
-		if ($show_status == 1) {
-			$detail .= $mem_status[values][0][name]."<br />";
-		} else {
-			$detail .= "<br />";
-
-		};
+/**
+ * Show a contact's membership history alongside their entry on the joint
+ * members page. Always return HTML text, including when the API is unavailable.
+ */
+function get_membership_info($contact_id, $show_status) {
+	$contact_id = (int) $contact_id;
+	if ($contact_id <= 0 || !function_exists('civicrm_initialize') || !function_exists('civicrm_api3')) {
+		return '';
 	}
-	return $detail;
+
+	// Reuse labels across the pair cards rather than querying identical types
+	// and statuses repeatedly.
+	static $type_names = [];
+	static $status_names = [];
+
+	try {
+		civicrm_initialize();
+		// Do not restrict to type 1 (Ordinary): joint members also have other
+		// membership types and possibly a separate joint discount.
+		$result = civicrm_api3('Membership', 'get', [
+			'contact_id' => $contact_id,
+			'options' => ['limit' => 0],
+		]);
+
+		if (!is_array($result) || !empty($result['is_error'])
+			|| !isset($result['values']) || !is_array($result['values'])) {
+			error_log('Facewall: invalid Membership API result for contact ' . $contact_id);
+			return '';
+		}
+
+		$details = [];
+		foreach ($result['values'] as $membership) {
+			if (!is_array($membership)) {
+				continue;
+			}
+
+			$type_id = (int) ($membership['membership_type_id'] ?? 0);
+			$status_id = (int) ($membership['status_id'] ?? 0);
+			if ($type_id <= 0) {
+				continue;
+			}
+
+			if (!array_key_exists($type_id, $type_names)) {
+				$type_result = civicrm_api3('MembershipType', 'get', [
+					'return' => ['name'],
+					'id' => $type_id,
+					'sequential' => 1,
+				]);
+				$type_names[$type_id] = (string) ($type_result['values'][0]['name'] ?? '');
+			}
+
+			$type_name = $type_names[$type_id];
+			if ($type_name === '') {
+				continue;
+			}
+
+			$start_timestamp = !empty($membership['start_date'])
+				? strtotime($membership['start_date']) : false;
+			$end_timestamp = !empty($membership['end_date'])
+				? strtotime($membership['end_date']) : false;
+			$start_year = $start_timestamp !== false ? date('y', $start_timestamp) : '?';
+			$end_year = $end_timestamp !== false ? date('y', $end_timestamp) : '?';
+
+			$line = htmlspecialchars($type_name, ENT_QUOTES, 'UTF-8')
+				. ' (' . $start_year . '-' . $end_year . ')';
+
+			if ($show_status && $status_id > 0) {
+				if (!array_key_exists($status_id, $status_names)) {
+					$status_result = civicrm_api3('MembershipStatus', 'get', [
+						'return' => ['name'],
+						'id' => $status_id,
+						'sequential' => 1,
+					]);
+					$status_names[$status_id] = (string) ($status_result['values'][0]['name'] ?? '');
+				}
+				if ($status_names[$status_id] !== '') {
+					$line .= ' ' . htmlspecialchars($status_names[$status_id], ENT_QUOTES, 'UTF-8');
+				}
+			}
+
+			$details[] = $line;
+		}
+		return $details ? implode('<br />', $details) . '<br />' : '';
+	} catch (\Throwable $e) {
+		error_log('Facewall: membership lookup failed for contact ' . $contact_id . ': ' . $e->getMessage());
+		return '';
+	}
 }
 
 // This is the good working copy of the code - might need some tweaking
