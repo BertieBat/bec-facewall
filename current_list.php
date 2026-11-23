@@ -1,4 +1,7 @@
 <?php
+// Public views require WordPress and the shared privacy helpers.
+defined('ABSPATH') || exit;
+require_once __DIR__ . '/includes/security.php';
 /**
  * Helper class for BEC Facewall! module
  * 
@@ -24,7 +27,7 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
 		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
 		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1
+		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
 		ORDER BY last_name, first_name");
 
 	// Prepare the query
@@ -70,24 +73,11 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 		$facewall_output .= '<div class="span2">';    
 	        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$facewall_output .= '<div class="page-header">';
-		$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.$row->facewall_public_84.'</h4>';
+		$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h4>';
  		$facewall_output .= '</div>';
 		$facewall_output .= '<div class="pull-left item-image">';
 		$facewall_output .= '<a>';
-		if ($row->image_URL && $row->facewall_public_84 === 0) 
-			{
-			if (!strpos($row->image_URL,"photo=")){
-				$image = substr($row->image_URL,strrpos($row->image_URL,"/")+1);
-			}else{
-				$image = substr($row->image_URL,strpos($row->image_URL,"photo=")+6);
-			}
-			// check for existance of correct thumbnail, if one doesn't exist then create it
-		 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-			$facewall_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' height="205" width="174" alt="'.$row->first_name.'_'.$row->last_name.'">';
-			}
-		else	{
-			$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg height="205" width="174" alt=\'No Picture\'>';
-			}
+		$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84));
 		$facewall_output .= '</a>';
 		$facewall_output .= '</div>';
 		$facewall_output .= '</div>';
@@ -136,6 +126,8 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		FROM civicrm_relationship_cache AS a
 		LEFT JOIN civicrm_contact 	AS near_contact_id_1 ON a.near_contact_id =  near_contact_id_1.id
 		LEFT JOIN civicrm_contact 	AS far_contact_id_2  ON a.far_contact_id  =  far_contact_id_2.id
+		INNER JOIN custom_value_1_BEC AS near_priv ON near_priv.entity_id = a.near_contact_id AND near_priv.facewall_public_84 = 1
+		INNER JOIN custom_value_1_BEC AS far_priv ON far_priv.entity_id = a.far_contact_id AND far_priv.facewall_public_84 = 1
 
 		WHERE ( a.relationship_type_id = 8 
 			AND orientation = 'a_b' 
@@ -290,7 +282,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->civicrm_contact_sort_name_a.'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h4>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -299,21 +291,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
     		$joint_output .= '<div class="text">'.$memberships.'</div>';
 		$joint_output .= '</div>';
 
-		if ($row->civicrm_contact_image_URL_a)
-			{
-			if (!strpos($row->civicrm_contact_image_URL_a,"photo=")){
-				$image = substr($row->civicrm_contact_image_URL_a,strrpos($row->civicrm_contact_image_URL_a,"/")+1);
-			}else{
-				$image = substr($row->civicrm_contact_image_URL_a,strpos($row->civicrm_contact_image_URL_a,"photo=")+6);
-			}
-			// check for existance of correct thumbnail, if one doesn't exist then create it
-		 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-			$joint_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' class="fw_image" height="205" width="174" alt="'.$row->civicrm_contact_sort_name_a.'">';
-			}
-		else	{
-			$joint_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-			}
-
+		$joint_output .= facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true);
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
@@ -321,7 +299,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->civicrm_contact_b_sort_name_b.'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h4>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -330,21 +308,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
     		$joint_output .= '<div class="text">'.$memberships.'</div>';
 		$joint_output .= '</div>';
 
-		if ($row->civicrm_contact_b_image_URL_b)
-			{
-			if (!strpos($row->civicrm_contact_b_image_URL_b,"photo=")){
-				$image = substr($row->civicrm_contact_b_image_URL_b,strrpos($row->civicrm_contact_b_image_URL_b,"/")+1);
-			}else{
-				$image = substr($row->civicrm_contact_b_image_URL_b,strpos($row->civicrm_contact_b_image_URL_b,"photo=")+6);
-			}
-			// check for existance of correct thumbnail, if one doesn't exist then create it
-		 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-			$joint_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' class="fw_image" height="205" width="174" alt="'.$row->civicrm_contact_b_sort_name_b.'">';
-			}
-		else	{
-			$joint_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-			}
-		//$joint_output .= '</a>';
+		$joint_output .= facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true);
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
@@ -453,7 +417,6 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 {
 	global $wpdb;
 	$joint_output = '';
-	rebuild_RelationshipCache();
 
 	$query=("SELECT 
 			`a`.`id` 				AS `id`, 
@@ -473,6 +436,8 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		LEFT JOIN civicrm_BEC_historical_summary 	AS far_hist  		ON a.far_contact_id  = far_hist.contact_id
 		LEFT JOIN civicrm_contact 			AS near_contact_id_1 	ON a.near_contact_id =  near_contact_id_1.id
 		LEFT JOIN civicrm_contact 			AS far_contact_id_2  	ON a.far_contact_id  =  far_contact_id_2.id
+		INNER JOIN custom_value_1_BEC AS near_priv ON near_priv.entity_id = a.near_contact_id AND near_priv.facewall_public_84 = 1
+		INNER JOIN custom_value_1_BEC AS far_priv ON far_priv.entity_id = a.far_contact_id AND far_priv.facewall_public_84 = 1
 
 		WHERE ( relationship_type_id = 8 
 			AND orientation = 'a_b' 
@@ -541,7 +506,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
 		//$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h4>';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->civicrm_contact_sort_name_a.'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h4>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -553,21 +518,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 
 
 		//$joint_output .= '<a>';
-		if ($row->civicrm_contact_image_URL_a)
-			{
-			if (!strpos($row->civicrm_contact_image_URL_a,"photo=")){
-				$image = substr($row->civicrm_contact_image_URL_a,strrpos($row->civicrm_contact_image_URL_a,"/")+1);
-			}else{
-				$image = substr($row->civicrm_contact_image_URL_a,strpos($row->civicrm_contact_image_URL_a,"photo=")+6);
-			}
-			// check for existance of correct thumbnail, if one doesn't exist then create it
-		 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-			$joint_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' class="fw_image" height="205" width="174" alt="'.$row->civicrm_contact_sort_name_a.'">';
-			}
-		else	{
-			$joint_output .= '<img src=\images\members\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-			}
-		//$joint_output .= '</a>';
+		$joint_output .= facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true);
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
@@ -575,7 +526,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->civicrm_contact_b_sort_name_b.'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h4>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -585,21 +536,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '</div>';
 
 		//$joint_output .= '<a>';
-		if ($row->civicrm_contact_b_image_URL_b)
-			{
-			if (!strpos($row->civicrm_contact_b_image_URL_b,"photo=")){
-				$image = substr($row->civicrm_contact_b_image_URL_b,strrpos($row->civicrm_contact_b_image_URL_b,"/")+1);
-			}else{
-				$image = substr($row->civicrm_contact_b_image_URL_b,strpos($row->civicrm_contact_b_image_URL_b,"photo=")+6);
-			}
-			// check for existance of correct thumbnail, if one doesn't exist then create it
-		 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-			$joint_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' class="fw_image" height="205" width="174" alt="'.$row->civicrm_contact_b_sort_name_b.'">';
-			}
-		else	{
-			$joint_output .= '<img src=\images\members\unknown.jpg class="fw_image" height="205" width="174" alt=\'No Picture\'>';
-			}
-		//$joint_output .= '</a>';
+		$joint_output .= facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true);
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
 		$joint_output .= '</div>';
