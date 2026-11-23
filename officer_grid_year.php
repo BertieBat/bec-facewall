@@ -610,7 +610,8 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 	$final_query = ("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight
-		FROM civicrm_BEC_historical_officer_membership  
+		FROM civicrm_BEC_historical_officer_membership AS hist
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
 		WHERE `club_year` <= YEAR(CURDATE())
 		ORDER BY club_year DESC, weight ASC;
 		");
@@ -635,7 +636,7 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 			} 
 			//$facewall_output .= $row2->club_year. ' ' ;		
 			
-			$facewall_output .= '       '.$row2->display_name. ' - '.$row2->post;
+			$facewall_output .= '       '.facewall_h($row2->display_name). ' - '.facewall_h($row2->post);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 
@@ -736,7 +737,8 @@ function display_officer_grid_year($year)
 
 
 	$final_query = ("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL
-		FROM civicrm_BEC_historical_officer_membership  
+		FROM civicrm_BEC_historical_officer_membership AS hist
+		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
 		WHERE `club_year` ".$fw_year." ".$search_year."
 		ORDER BY club_year DESC, weight ASC;
 		");
@@ -820,10 +822,10 @@ function display_officer_grid_year($year)
 					break;
 			}
 
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$display_post.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($display_post).'</h5>';
 			
 			// and then the name
-			$facewall_output .= '       '.$row2->display_name;
+			$facewall_output .= '       '.facewall_h($row2->display_name);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 
@@ -870,20 +872,7 @@ function display_officer_grid_year($year)
 
 			
 			// now place their picture on the page
-			if ($row2->image_URL)
-				{
-				if (!strpos($row2->image_URL,"photo=")){
-					$image = substr($row2->image_URL,strrpos($row2->image_URL,"/")+1);
-				}else{
-					$image = substr($row2->image_URL,strpos($row2->image_URL,"photo=")+6);
-				}
-				// check for existance of correct thumbnail, if one doesn't exist then create it
-			 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-					$facewall_output .= '<img src=\''.$root_dir.$image_dir.$thumb_dir.$thumb_width.'/tn_'.$image.'\' height="205" width="174" alt="'.$row2->display_name.'">';
-				}
-			else	{
-				$facewall_output .= '<img src=\wp\wp-content\plugins\facewall\img\unknown.jpg height="205" width="174" alt=\'No Picture\'>';
-				}
+			$facewall_output .= facewall_photo_html($row2->image_URL, $row2->display_name, true);
 			// cleanup the divs and increment counters
 
 			$facewall_output .= '</a>';
