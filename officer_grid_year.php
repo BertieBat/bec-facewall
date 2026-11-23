@@ -999,9 +999,22 @@ function build_officer_historical_table()
 							$mem_club_year = $x;
 						}
 					}
-				$insert = ("INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL)
-					VALUES ('$row->cv_contact_id', '$row->cv_display_name', '$row->cv_post', '$mem_club_year', '$row->cv_join_date', '$row->cv_start_date', '$row->cv_end_date', '$row->cv_weight', '$row->cv_image_URL')");
-				$insert_result = $wpdb->get_results($insert);
+				$insert = $wpdb->prepare(
+					"INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL) VALUES (%d, %s, %s, %d, %s, %s, %s, %d, %s)",
+					(int) $row->cv_contact_id,
+					(string) $row->cv_display_name,
+					(string) $row->cv_post,
+					(int) $mem_club_year,
+					(string) $row->cv_join_date,
+					(string) $row->cv_start_date,
+					(string) $row->cv_end_date,
+					(int) $row->cv_weight,
+					(string) $row->cv_image_URL
+				);
+				if ($wpdb->query($insert) === false) {
+					error_log('Facewall: officer history insert failed for contact ' . (int) $row->cv_contact_id . ': ' . $wpdb->last_error);
+					return 'build_officer_historical_table - failed (insert)';
+				}
 				
 			}
 	}
@@ -1017,7 +1030,7 @@ function build_BEC_historical_summary_table()
 	
 	global $wpdb;
 	//  use mtype to filter out BCA and discounts
-	$query=("SELECT cust.Membership_Number AS mem_num, c.id AS contact_id, c.first_name, c.nick_name, c.last_name, CONCAT(c.first_name, ' ', c.last_name) AS display_name, c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number AS mem_num, c.id AS contact_id, c.first_name, c.nick_name, c.last_name, CONCAT(c.first_name, ' ', c.last_name) AS display_name, c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
 		YEAR(mem.start_date) AS 'start', 
 		YEAR(mem.end_date) AS 'end'
 		from civicrm_contact AS c
@@ -1079,22 +1092,15 @@ function build_BEC_historical_summary_table()
 			$memberships = consolidateArray($memberships);
 
 
-			// fix the details of the image_URL
-			if ($row->image_URL)
-				{
-				if (!strpos($row->image_URL,"photo=")){
-					$image = substr($row->image_URL,strrpos($row->image_URL,"/")+1);
-				}else{
-					$image = substr($row->image_URL,strpos($row->image_URL,"photo=")+6);
-				}
-				// check for existance of correct thumbnail, if one doesn't exist then create it
-			 	facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $image);
-				$new_image_URL = 'tn_'.$image;
-			}
-			else{
+			// The cron may generate thumbnails only for affirmative FaceWall opt-ins.
+			$photo_name = facewall_image_filename($row->image_URL);
+			if (facewall_is_public($row->facewall_public_84) &&
+				$photo_name !== '' &&
+				facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name)) {
+				$new_image_URL = 'tn_' . $photo_name;
+			} else {
 				$new_image_URL = '';
 			}
-
 
 			// work out the summary info
 			$summary = '';
