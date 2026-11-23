@@ -469,10 +469,10 @@ function display_all_membership()
 			$facewall_output .= '<div class="span2">';    
 		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->id.'</h5>';
+			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->id).'</h5>';
 			
 			// and then the name
-			$facewall_output .= $row->display_name;
+			$facewall_output .= facewall_h($row->display_name);
 			$facewall_output .= '</div>';
 			$facewall_output .= '<div class="pull-left item-image">';
 			$facewall_output .= '<div class="fw_middle">';
