@@ -280,7 +280,10 @@ function show_membership_data()
 		");
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
-	$final_count = count($final);
+	$final_count = is_array($final) ? count($final) : 0;
+	if ($final_count === 0) {
+		return '<p>No members found.</p>';
+	}
 	// find the max year value in the data
 	$club_year = max(array_column($final, 'club_year'));
 	$facewall_output .= '<h2>Club Year '.$club_year. ' - '.array_count_values(array_column($final,'club_year'))[$club_year] .' members</h2>';
