@@ -25,7 +25,7 @@
 
 global $wpdb;
 
-include_once 'current_list.php';
+require_once __DIR__ . '/current_list.php';
 
 function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 {
@@ -1003,7 +1003,10 @@ function build_officer_historical_table()
 
 	// We are going to store the output in a new table
 	// but first we are going to empty it
-	$truncate = $wpdb->get_results("TRUNCATE TABLE civicrm_BEC_historical_officer_membership");
+	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_officer_membership') === false) {
+		error_log('Facewall: failed to clear historical officer table: ' . $wpdb->last_error);
+		return 'build_officer_historical_table - failed (truncate)';
+	}
 
 	//now loop through the rults and inject the data into a new table
 	// but we need to think about year vs club year.
@@ -1063,7 +1066,7 @@ function build_BEC_historical_summary_table()
 		LEFT JOIN civicrm_membership 		AS mem  	ON c.id = mem.contact_id AND mem.membership_type_id < 19
 		LEFT JOIN civicrm_membership_type 	AS mtype 	ON mem.membership_type_id = mtype.id
 		LEFT JOIN civicrm_membership_status 	AS mstatus 	ON mem.status_id = mstatus.id
-		WHERE mtype.id IN (1,2,3,4,5,6,7,18) AND status_id <90 AND is_test = 0  AND cust.Membership_Number < 5000
+		WHERE mtype.id IN (1,2,3,4,5,6,7,18) AND status_id <90 AND is_test = 0 AND cust.Membership_Number BETWEEN 1 AND 4999
 		ORDER BY cust.Membership_Number DESC, mtype.id
 		");
 	//  inject the data back into a new table adding a row for every club year of membership.
@@ -1090,7 +1093,10 @@ function build_BEC_historical_summary_table()
 
 	// We are going to store the output in a new table
 	// but first we are going to empty it
-	$truncate = $wpdb->get_results("TRUNCATE TABLE civicrm_BEC_historical_summary");
+	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_summary') === false) {
+		error_log('Facewall: failed to clear historical summary table: ' . $wpdb->last_error);
+		return 'build_BEC_historical_summary_table - failed (truncate)';
+	}
 	//---------------------------------------------------------------------------------
 	//now loop through the results and inject the data into a new table
 	for($result_index = 0; $result_index < $result_count ; $result_index++)
@@ -1151,7 +1157,7 @@ function build_BEC_historical_summary_table()
 			// Assuming $wpdb is your WordPress database object
 
 			$insert = $wpdb->prepare(
-			    "INSERT INTO civicrm_BEC_historical_summary (id, contact_id, display_name, summary, image_URL) VALUES (%d, %d, %s, %s, %s)",
+			    "INSERT INTO civicrm_BEC_historical_summary (id, contact_id, display_name, summary, image_URL) VALUES (%d, %d, %s, %s, %s) ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id), display_name = VALUES(display_name), summary = VALUES(summary), image_URL = VALUES(image_URL)",
 			    $row->mem_num,
 			    $row->contact_id,
 			    $row->display_name,
@@ -1159,8 +1165,10 @@ function build_BEC_historical_summary_table()
 			    $new_image_URL
 			);
 
-			$insert_result = $wpdb->get_results($insert);
-
+			if ($wpdb->query($insert) === false) {
+				error_log('Facewall: historical summary insert failed for membership number ' . (int) $row->mem_num . ': ' . $wpdb->last_error);
+				return 'build_BEC_historical_summary_table - failed (insert)';
+			}
 
 	}
 	$msg = "build_BEC_historical_summary_table - completed";
