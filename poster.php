@@ -1,4 +1,7 @@
 <?php
+// This script must only be loaded through the WordPress plugin.
+defined('ABSPATH') || exit;
+require_once __DIR__ . '/includes/security.php';
 /**
  * Create a Poster of all BEC members
  * 
@@ -12,8 +15,14 @@
  *
  */
 
-function create_poster($fw_title, $sheet_size, $variant)
+function create_poster($fw_title, $sheet_size, $variant = '')
 {
+	if (!function_exists('current_user_can') || !current_user_can('manage_options')) {
+		wp_die('You do not have permission to create FaceWall posters.');
+	}
+	if (!in_array($sheet_size, ['A1', 'RA1', 'SRA1'], true)) {
+		wp_die('Invalid FaceWall poster size.');
+	}
 	global $wpdb;
 	
 	// Include the main TCPDF library (search for installation path).
@@ -206,7 +215,7 @@ function create_poster($fw_title, $sheet_size, $variant)
 			   FROM civicrm_BEC_historical_officer_membership 
 			   WHERE club_year = ".date("Y")."
 			) as officer ON c.id = officer.contact_id AND officer.rn = 1
-		WHERE mtype.id <9 AND status_id <4 AND c.is_deceased != 1 
+		WHERE mtype.id <9 AND status_id <4 AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
 		ORDER BY last_name, first_name");
 
 
@@ -217,6 +226,9 @@ function create_poster($fw_title, $sheet_size, $variant)
 
 	// Prepare the query
 	$result = $wpdb->get_results($query);
+	if (!$result) {
+		wp_die('There are no members with FaceWall display consent to include in the poster.');
+	}
 
 	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
 	$base_dir = "/home/bertie/public_html/";
@@ -274,21 +286,12 @@ function create_poster($fw_title, $sheet_size, $variant)
 				break;
 			}
 			
-			if ($row->image_URL)
-				{
-				if (!strpos($row->image_URL,"photo=")){
-					$image = substr($row->image_URL,strrpos($row->image_URL,"/")+1);
-				}else{
-					$image = substr($row->image_URL,strpos($row->image_URL,"photo=")+6);
-				}
-				//$mugshot = $base_dir.$image_dir.$image;
-				$mugshot = $base_dir.$image_dir.$thumb_dir.$thumb_width_dir.'/tn_'.$image;
+			// Use only validated local photos for members who opted in.
+			$mugshot = facewall_full_size_thumbnail_path($row->image_URL, true);
+			if ($mugshot === '') {
+				$mugshot = __DIR__ . '/img/unknown.jpg';
+			}
 
-				}
-			else	{
-				$mugshot = $base_dir.'wp/wp-content/plugins/facewall/img/unknown.jpg';
-				}
-				
 		
 			// Place the image on the page
 			//
@@ -360,7 +363,9 @@ function create_poster($fw_title, $sheet_size, $variant)
 	// Clean any content of the output buffer
 	// This kills all output which we collected with $facewall_output. 
 	// If you want to show this to screen then disable this temporarily however using it kills the PDF output
-	ob_end_clean();
+	if (ob_get_level() > 0) {
+		ob_end_clean();
+	}
 
 	//Close and output PDF document
 	/**
@@ -373,7 +378,8 @@ function create_poster($fw_title, $sheet_size, $variant)
 	  E : return the document as base64 mime multi-part email attachment (RFC 2045)
 	  **/
 
-	$pdf->Output('/home/bertie/public_html/wp/wp-content/plugins/facewall/poster_output/'.date("Y").'-BEC_Membership_Poster_'.$sheet_size.'.pdf', 'FD');
+	// Download directly; never leave a predictable PDF inside the webroot.
+	$pdf->Output(date('Y') . '-BEC_Membership_Poster_' . $sheet_size . '.pdf', 'D');
 	//$pdf->Output('/home/bertie/public_html/wp/wp-content/plugins/facewall/poster_output/'.$sheet_size.'-BEC_Membership_Poster_'.$sheet_size.'-'.date("Y").'.pdf', 'FD');
 	//$pdf->Output('/home/bertie/public_html/tmp/Facewall/TCPDF-main/examples/'.$sheet_size.'-BEC_Membership_Poster_'.$sheet_size.'-'.date("Y").'.pdf', 'FD');
 
