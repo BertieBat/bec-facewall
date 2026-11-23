@@ -380,10 +380,6 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 
 	// Download directly; never leave a predictable PDF inside the webroot.
 	$pdf->Output(date('Y') . '-BEC_Membership_Poster_' . $sheet_size . '.pdf', 'D');
-	//$pdf->Output('/home/bertie/public_html/wp/wp-content/plugins/facewall/poster_output/'.$sheet_size.'-BEC_Membership_Poster_'.$sheet_size.'-'.date("Y").'.pdf', 'FD');
-	//$pdf->Output('/home/bertie/public_html/tmp/Facewall/TCPDF-main/examples/'.$sheet_size.'-BEC_Membership_Poster_'.$sheet_size.'-'.date("Y").'.pdf', 'FD');
-
-
 
 	return;
 }
