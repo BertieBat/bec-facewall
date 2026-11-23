@@ -1,0 +1,169 @@
+name: FaceWall history cleanup - explicit approval required
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type PURGE_FACEWALL_HISTORY exactly to approve a force rewrite'
+        required: true
+        type: string
+      expected_main_sha:
+        description: 'Paste the complete 40-character main commit SHA shown on GitHub'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: facewall-history-rewrite
+  cancel-in-progress: false
+
+jobs:
+  rewrite-history:
+    name: Rewrite approved refs and verify sensitive paths removed
+    # A workflow_dispatch on a non-main branch must not be allowed to rewrite refs.
+    if: github.repository == 'speleo/facewall' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      APPROVAL: ${{ inputs.confirmation }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+    steps:
+      - name: Validate explicit user confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$APPROVAL" == 'PURGE_FACEWALL_HISTORY' ]] || {
+            echo 'The exact confirmation phrase was not supplied.' >&2; exit 1;
+          }
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[a-fA-F0-9]{40}$ ]] || {
+            echo 'Expected main commit must be a full 40-character SHA.' >&2; exit 1;
+          }
+          [[ "${EXPECTED_MAIN_SHA,,}" == "${GITHUB_SHA,,}" ]] || {
+            echo 'The main branch has a different commit from the approved one.' >&2; exit 1;
+          }
+
+      - name: Check out repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install pinned history-rewrite tool
+        shell: bash
+        run: |
+          python3 -m pip install --user git-filter-repo==2.47.0
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Rewrite isolated repository, validate, and conditionally push
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REPOSITORY" == 'speleo/facewall' && "$GITHUB_REF" == 'refs/heads/main' ]]
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
+
+          # Synchronise remote branch and tag refs from GitHub and fetch
+          # PR heads only to count the remaining read-only references.
+          git fetch --prune origin \
+            '+refs/heads/*:refs/remotes/origin/*' \
+            '+refs/tags/*:refs/tags/*'
+          git fetch --no-tags origin '+refs/pull/*/head:refs/pull/*/head'
+
+          scratch="$RUNNER_TEMP/facewall-cleaned.git"
+          git init --bare "$scratch"
+          git -C "$scratch" fetch --no-tags "$GITHUB_WORKSPACE" \
+            '+refs/remotes/origin/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*' \
+            '+refs/pull/*/head:refs/pull/*/head'
+
+          # An existing remote-tracking branch must be available for each
+          # branch we intend to replace. Protect all refs against races.
+          mapfile -t target_refs < <(
+            git -C "$scratch" for-each-ref --format='%(refname)' refs/heads refs/tags
+          )
+          [[ "${#target_refs[@]}" -ge 1 ]] || {
+            echo 'No branches were collected: refusing to push.' >&2; exit 1;
+          }
+
+          old_refs="$RUNNER_TEMP/original-refs.txt"
+          : > "$old_refs"
+          leases=()
+          refspecs=()
+          for ref in "${target_refs[@]}"; do
+            if [[ "$ref" == refs/heads/* ]]; then
+              branch="${ref#refs/heads/}"
+              original=$(git rev-parse "refs/remotes/origin/$branch")
+            elif [[ "$ref" == refs/tags/* ]]; then
+              original=$(git rev-parse "$ref")
+            else
+              echo "Unexpected ref namespace: $ref" >&2; exit 1
+            fi
+            printf '%s\t%s\n' "$original" "$ref" >> "$old_refs"
+            leases+=("--force-with-lease=$ref:$original")
+            refspecs+=("$ref:$ref")
+          done
+          sort -o "$old_refs" "$old_refs"
+
+          before_count=$(git -C "$scratch" log --all --format='%H' -- \
+            zzpluralzalpha/ facewall_cron.txt | wc -l)
+          if (( before_count < 1 )); then
+            echo 'No remaining path history found. Nothing to rewrite.'
+            exit 0
+          fi
+          echo "Commits referencing sensitive paths: $before_count"
+
+          # Only the scratch bare copy is rewritten, never the checkout.
+          git -C "$scratch" filter-repo \
+            --force --sensitive-data-removal --no-fetch --invert-paths \
+            --path zzpluralzalpha/ \
+            --path facewall_cron.txt
+
+          if git -C "$scratch" log --all --format='%H' -- \
+              zzpluralzalpha/ facewall_cron.txt | grep -q .; then
+            echo 'Sensitive paths remain after filtering; refusing to push.' >&2
+            exit 1
+          fi
+
+          # The current main branch already excludes the deleted files.
+          # Its file tree must remain byte-for-byte identical after rewrite.
+          original_tree=$(git rev-parse 'refs/remotes/origin/main^{tree}')
+          cleaned_tree=$(git -C "$scratch" rev-parse 'refs/heads/main^{tree}')
+          [[ "$original_tree" == "$cleaned_tree" ]] || {
+            echo 'Unexpected file changes to main; refusing to push.' >&2; exit 1;
+          }
+
+          # GitHub's PR refs are read-only; report them for GitHub Support.
+          changed_report="$scratch/filter-repo/changed-refs"
+          if [[ -f "$changed_report" ]]; then
+            changed_prs=$(grep -Ec '^refs/pull/.*/head$' "$changed_report" || true)
+            changed_branches=$(grep -Ec '^refs/heads/' "$changed_report" || true)
+            echo "Pull requests requiring GitHub Support review: $changed_prs"
+            echo "Branch refs requiring rewrite: $changed_branches"
+          fi
+
+          # Abort if the remote branches or tags have changed at all since
+          # checkout, including branches created or deleted during the run.
+          remote_refs="$RUNNER_TEMP/remote-refs.txt"
+          git ls-remote --heads --tags origin | grep -v '\^{}$' | sort > "$remote_refs"
+          diff -u "$old_refs" "$remote_refs" || {
+            echo 'Remote refs changed during cleanup; refusing to push.' >&2; exit 1;
+          }
+
+          # Use the checkout's temporary GitHub credential only inside the
+          # disposable bare repository. Do not print or upload credentials.
+          header=$(git config --local --get 'http.https://github.com/.extraheader')
+          [[ -n "$header" ]] || {
+            echo 'Missing GitHub Actions push credentials.' >&2; exit 1;
+          }
+          git -C "$scratch" config 'http.https://github.com/.extraheader' "$header"
+          unset header
+          git -C "$scratch" remote add origin "https://github.com/$GITHUB_REPOSITORY"
+
+          # Atomic update: all branch/tag refs succeed together or none do.
+          # Exact leases prevent overwriting changes made after our fetch.
+          git -C "$scratch" push --dry-run --atomic "${leases[@]}" origin "${refspecs[@]}"
+          git -C "$scratch" push --atomic "${leases[@]}" origin "${refspecs[@]}"
+
+          echo 'HISTORY REWRITE COMPLETE for writable branch/tag refs.'
+          echo 'Old pull-request refs/cached views may remain: contact GitHub Support.'
