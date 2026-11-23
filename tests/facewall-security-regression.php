@@ -59,6 +59,7 @@ rmdir($images_dir);
 rmdir(dirname($images_dir));
 rmdir(dirname(dirname($images_dir)));
 rmdir(dirname(dirname(dirname($images_dir))));
+rmdir(dirname(dirname(dirname(dirname($images_dir)))));
 rmdir(WP_CONTENT_DIR);
 
 class FacewallSecurityTestDB {
