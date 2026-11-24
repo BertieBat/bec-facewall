@@ -4,7 +4,7 @@ FaceWall is the BEC WordPress plugin that reads CiviCRM contact and membership
 records and displays current members, historical memberships, joint members,
 students/under-30s, probationary members, and committee officers.
 
-Release: **1.1.9** (poster photo recovery and coverage audit).
+Release: **1.1.10** (shared current/historical photo fallback and path diagnostics).
 
 ## Administrator screens
 
