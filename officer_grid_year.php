@@ -163,7 +163,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 		WHERE mtype.id <9 
 			AND status_id <4 
 			AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-			AND DATE_SUB(\"".$lastAGM."\", INTERVAL 30 YEAR) <= birth_date
+			AND c.birth_date > DATE_SUB('".$lastAGM."', INTERVAL 30 YEAR)
 		ORDER BY last_name, first_name");
 
 	// Prepare the query
