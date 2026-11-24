@@ -582,6 +582,11 @@ function facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_wid
     if (is_file($small_path) && is_file($full_path)) {
         return true;
     }
+    if (!function_exists('imagecreatetruecolor') ||
+        !function_exists('imagecreatefromjpeg') ||
+        !function_exists('imagecreatefrompng')) {
+        return false; // GD is unavailable; never crash the scheduled worker.
+    }
     $src = $info[2] === IMAGETYPE_JPEG ? @imagecreatefromjpeg($source) : @imagecreatefrompng($source);
     if (!$src) {
         return false;

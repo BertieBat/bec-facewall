@@ -55,7 +55,10 @@ function facewall_image_filename($stored) {
     if (strncmp($candidate, 'tn_', 3) === 0) {
         $candidate = substr($candidate, 3);
     }
-    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,179}\.(?:jpe?g|png)$/iD', $candidate)) {
+    // Common camera/upload filenames may include spaces, plus signs,
+    // parentheses or Unicode letters. Never permit separators, traversal,
+    // extensions other than local JPEG/PNG, or control characters.
+    if (!preg_match('~^[\\p{L}\\p{N}][\\p{L}\\p{N}._ ()+\\-]{0,179}\\.(?:jpe?g|png)$~iuD', $candidate)) {
         return '';
     }
     return $candidate;
@@ -74,28 +77,37 @@ function facewall_unknown_image_html($name = '') {
  * Read-only renderer. Public page requests must never generate image files.
  * The nightly cron can generate validated missing thumbnails separately.
  */
-function facewall_photo_html($stored, $name = '', $is_public = false) {
-    if (!$is_public) {
+function facewall_photo_html($stored, $name = '', $is_public = false, $fallback_stored = '')
+{
+    if (!$is_public || !defined('WP_CONTENT_DIR')) {
         return facewall_unknown_image_html($name);
     }
 
-    $filename = facewall_image_filename($stored);
-    if ($filename === '' || !defined('WP_CONTENT_DIR')) {
-        return facewall_unknown_image_html($name);
-    }
+    // Historical summary images can be missing or stale after a rebuild.
+    // Try both stored references without writing files or fetching remote URLs.
+    // Consent is checked BEFORE either reference is considered.
+    foreach ([$stored, $fallback_stored] as $candidate) {
+        $filename = facewall_image_filename($candidate);
+        if ($filename === '') {
+            continue;
+        }
+        $relative = '/uploads/civicrm/custom/tn/174/tn_' . $filename;
+        $path = WP_CONTENT_DIR . $relative;
+        if (!is_file($path)) {
+            continue;
+        }
 
-    $relative = '/uploads/civicrm/custom/tn/174/tn_' . $filename;
-    $path = WP_CONTENT_DIR . $relative;
-    if (!is_file($path)) {
-        return facewall_unknown_image_html($name);
+        // Use the real local filename for filesystem access and encode the
+        // URL segment separately (spaces, parentheses, and Unicode).
+        $web_relative = '/uploads/civicrm/custom/tn/174/tn_' . rawurlencode($filename);
+        $url = function_exists('content_url')
+            ? content_url($web_relative)
+            : '/wp/wp-content' . $web_relative;
+        return '<img src="' . facewall_h($url)
+            . '" class="fw_image" width="174" height="205" loading="lazy" alt="'
+            . facewall_h($name) . '">';
     }
-
-    $url = function_exists('content_url')
-        ? content_url($relative)
-        : '/wp/wp-content' . $relative;
-    return '<img src="' . facewall_h($url)
-        . '" class="fw_image" width="174" height="205" loading="lazy" alt="'
-        . facewall_h($name) . '">';
+    return facewall_unknown_image_html($name);
 }
 
 /** Validated local path for a generated PDF thumbnail. No external URLs. */

@@ -32,6 +32,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: gd
           coverage: none
       - name: Check PHP syntax
         run: |
@@ -44,6 +45,7 @@ jobs:
           php tests/maintenance-regression.php
           php tests/shortcodes-and-style-regression.php
           php tests/grid-markup-regression.php
+          php tests/photo-repair-regression.php
 
   mariadb-integration:
     name: MariaDB transaction and rollback integration

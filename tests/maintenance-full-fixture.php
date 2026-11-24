@@ -114,7 +114,7 @@ foreach ($schema as $table => $columns) {
 sql_or_fail("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY'");
 
 sql_or_fail("INSERT INTO civicrm_contact VALUES
-    (42, 'Test', '', 'Member', 'Test Member', NULL, 0, NULL, '1990-01-01')");
+    (42, 'Test', '', 'Member', 'Test Member', 'portrait.jpg', 0, NULL, '1990-01-01')");
 sql_or_fail("INSERT INTO custom_value_1_BEC VALUES (42, 1001, 1)");
 sql_or_fail("INSERT INTO civicrm_membership_type VALUES (1, 'Ordinary'), (18, 'Committee')");
 sql_or_fail("INSERT INTO civicrm_membership_status VALUES (2, 'Current')");
@@ -149,6 +149,8 @@ fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical
     'Membership history was not generated');
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 1,
     'Historical summary was not generated');
+fixture_assert($wpdb->get_var('SELECT image_URL FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 'tn_portrait.jpg',
+    'Photo reference was lost when the source image was unavailable during the rebuild');
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_officer_membership WHERE contact_id = 42') > 0,
     'Officer history was not generated');
 fixture_assert((int) $wpdb->get_var("SELECT COUNT(*) FROM civicrm_BEC_current_year WHERE display_name = 'Test Member'") === 1,
