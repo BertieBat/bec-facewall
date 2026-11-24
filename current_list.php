@@ -280,7 +280,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="page-header">';
 		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
  		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image">';
+		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 
 		$memberships = get_membership_info($row->near_contact_id, 1);
 		$joint_output .= '<div class="fw_middle">';
@@ -297,7 +297,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="page-header">';
 		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
  		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image">';
+		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 
 		$memberships = get_membership_info($row->far_contact_id, 1);
 		$joint_output .= '<div class="fw_middle">';
@@ -500,7 +500,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		//$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h5>';
 		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
  		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image">';
+		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 
 		//$memberships = get_membership_info($row->near_contact_id, 0);
 		$joint_output .= '<div class="fw_middle">';
@@ -520,7 +520,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="page-header">';
 		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
  		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image">';
+		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 
 		//$memberships = get_membership_info($row->far_contact_id, 0);
 		$joint_output .= '<div class="fw_middle">';
