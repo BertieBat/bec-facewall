@@ -28,6 +28,7 @@ defined('ABSPATH') || exit;
 global $wpdb;
 
 require_once __DIR__ . '/current_list.php';
+require_once __DIR__ . '/includes/calendar.php';
 
 function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 {
@@ -140,7 +141,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$lastAGM = date("Y-m-d",strtotime("first Saturday of October ".date("Y", strtotime("-1 year"))));
+	$lastAGM = facewall_most_recent_agm();
 	//$lastAGM = strtotime("first Saturday of October ".date("Y", strtotime("-1 year")));
 
 	$ageLimit = 30;
@@ -618,12 +619,13 @@ function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
 	
 	global $wpdb;
 	$facewall_output = '';
-	$final_query = ("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight
+	$visible_committee_year = facewall_current_committee_year();
+	$final_query = $wpdb->prepare("SELECT contact_id, display_name, post, club_year, join_date, start_date, end_date, weight
 		FROM civicrm_BEC_historical_officer_membership AS hist
 		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
-		WHERE `club_year` <= YEAR(CURDATE())
-		ORDER BY club_year DESC, weight ASC;
-		");
+		WHERE `club_year` <= %d
+		ORDER BY club_year DESC, weight ASC",
+		$visible_committee_year);
 
 	// Prepare the query
 	$final = $wpdb->get_results($final_query);
@@ -735,17 +737,8 @@ function display_officer_grid_year($year)
 	else{
 		$search_year = date("Y");}
 	**/
-	// Determine when the committee changes over (first Saturday in October)
-	$year_now = date("Y");
-	$first_saturday_oct = strtotime("first saturday of october $year_now");
-
-	// If today is before the first Saturday in October, use this year.
-	// Otherwise, use next year.
-	if (time() < $first_saturday_oct) {
-	    $search_year = $year_now;
-	} else {
-	    $search_year = $year_now +1;
-	}
+	// The same AGM handover rule is used for the officer grid and poster.
+	$search_year = facewall_current_committee_year();
 
 
 	$final_query = ("SELECT hist.contact_id, hist.display_name, hist.post, hist.club_year, hist.join_date, hist.start_date, hist.end_date, hist.weight, hist.image_URL,
