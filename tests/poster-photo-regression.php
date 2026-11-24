@@ -64,13 +64,19 @@ poster_assert(facewall_poster_image_path('original-only.jpg', true) === '',
     'Read-only poster unexpectedly used an unprocessed original');
 poster_assert(facewall_poster_image_path('small-only.jpg', false) === '',
     'PDF fallback bypassed explicit public consent');
+poster_assert(facewall_poster_image_path('gone.jpg', true, 'small-only.jpg') ===
+    $small . '/tn_small-only.jpg', 'Historical image fallback was not checked');
+poster_assert(facewall_poster_image_path('gone.jpg', false, 'small-only.jpg') === '',
+    'Historical image fallback bypassed public consent');
+poster_assert(facewall_poster_image_path('../bad.jpg', true, 'both.jpg') ===
+    $full . '/tn_both.jpg', 'Valid historical image was not used after invalid current reference');
 foreach (['../bad.jpg', 'image.svg', 'https://example.test/evil.php'] as $unsafe) {
     poster_assert(facewall_poster_image_path($unsafe, true) === '',
         'Unsafe/non-image filename was treated as a local poster photo');
 }
 // Verify the real poster entry point uses the validated preference helper.
 $poster = file_get_contents(dirname(__DIR__) . '/poster.php');
-poster_assert(strpos($poster, 'facewall_poster_image_path($row->image_URL, true)') !== false,
+poster_assert(strpos($poster, 'facewall_poster_image_path($row->image_URL, true, $row->historical_image_URL)') !== false,
     'Actual poster code does not use the safe full/small thumbnail fallback');
 
 $db = new FacewallPosterAuditTestDatabase();
@@ -82,23 +88,25 @@ $db->rows = [
     (object) ['id' => 15, 'display_name' => 'No Source', 'image_URL' => 'gone.jpg'],
     (object) ['id' => 16, 'display_name' => '<script>Person</script>', 'image_URL' => ''],
     (object) ['id' => 17, 'display_name' => 'Malformed', 'image_URL' => '../bad.jpg'],
+    (object) ['id' => 18, 'display_name' => 'History Only', 'image_URL' => '', 'historical_image_URL' => 'both.jpg'],
 ];
 poster_assert(isset(facewall_poster_photo_audit($db)['error']) && $db->queries === [],
     'Non-admin audit must not query or reveal member records');
 $GLOBALS['poster_audit_admin'] = true;
 $audit = facewall_poster_photo_audit($db);
 $expected = [
-    'members' => 7, 'complete' => 1, 'full_only' => 1,
-    'small_only' => 1, 'needs_repair' => 1, 'no_source' => 1,
-    'no_reference' => 2,
+    'members' => 8, 'complete' => 2, 'full_only' => 1,
+    'small_only' => 1, 'needs_repair' => 1, 'alternate_source' => 0, 'no_source' => 1,
+    'no_reference' => 2, 'history_selected' => 1,
 ];
 poster_assert($audit['counts'] === $expected,
     'Poster image audit failed to distinguish small-only, missing-original and no-reference states');
-poster_assert(count($audit['issues']) === 6,
+poster_assert(count($audit['issues']) === 7,
     'Audit must exclude complete caches from attention list');
 $html = facewall_poster_photo_audit_html($audit);
-poster_assert(strpos($html, 'Smaller photo available') !== false &&
-    strpos($html, 'Photo Repair can try the original') !== false,
+poster_assert(strpos($html, 'Web thumbnail available') !== false &&
+    strpos($html, 'run Photo Repair') !== false &&
+    strpos($html, 'Historical FaceWall') !== false,
     'Audit did not explain repairable and low-resolution photos');
 poster_assert(strpos($html, '<script>Person</script>') === false &&
     strpos($html, '&lt;script&gt;Person&lt;/script&gt;') !== false,

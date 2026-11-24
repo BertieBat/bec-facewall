@@ -129,18 +129,26 @@ function facewall_full_size_thumbnail_path($stored, $is_public = false) {
  * existing 174px FaceWall thumbnail is better than the placeholder.
  * This is a read-only path decision: never create files during a PDF request.
  */
-function facewall_poster_image_path($stored, $is_public = false) {
-    $full = facewall_full_size_thumbnail_path($stored, $is_public);
-    if ($full !== '') {
-        return $full;
-    }
+function facewall_poster_image_path($stored, $is_public = false, $fallback_stored = '') {
     if (!$is_public || !defined('WP_CONTENT_DIR')) {
         return '';
     }
-    $filename = facewall_image_filename($stored);
-    if ($filename === '') {
-        return '';
+    // Current CiviCRM photos may have been replaced or cleared while an
+    // existing consenting historical FaceWall summary still has a usable
+    // cached photo. Match the fallback by contact ID at SQL call sites.
+    foreach ([$stored, $fallback_stored] as $reference) {
+        $full = facewall_full_size_thumbnail_path($reference, true);
+        if ($full !== '') {
+            return $full;
+        }
+        $filename = facewall_image_filename($reference);
+        if ($filename === '') {
+            continue;
+        }
+        $path = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/174/tn_' . $filename;
+        if (is_file($path)) {
+            return $path;
+        }
     }
-    $path = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/174/tn_' . $filename;
-    return is_file($path) ? $path : '';
+    return '';
 }

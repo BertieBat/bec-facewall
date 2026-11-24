@@ -69,11 +69,16 @@ function facewall_photo_repair_batch() {
         $cursor = max(0, (int) ($status['cursor'] ?? 0));
         $limit = 20;
         $query = $wpdb->prepare(
-            "SELECT c.id, c.image_URL
+            "SELECT c.id, c.image_URL, hist.image_URL AS historical_image_URL
              FROM civicrm_contact AS c
              INNER JOIN custom_value_1_BEC AS consent
                ON consent.entity_id = c.id AND consent.facewall_public_84 = 1
-             WHERE c.id > %d AND c.image_URL IS NOT NULL AND c.image_URL <> ''
+             LEFT JOIN civicrm_BEC_historical_summary AS hist
+               ON hist.contact_id = c.id AND hist.id = consent.Membership_Number
+             WHERE c.id > %d AND (
+               (c.image_URL IS NOT NULL AND c.image_URL <> '') OR
+               (hist.image_URL IS NOT NULL AND hist.image_URL <> '')
+             )
              ORDER BY c.id ASC LIMIT %d",
             $cursor, $limit
         );
@@ -95,27 +100,44 @@ function facewall_photo_repair_batch() {
             // Re-check consent at every batch through the SQL join.
             $status['cursor'] = max($status['cursor'], (int) $row->id);
             $status['checked']++;
-            $name = facewall_image_filename($row->image_URL);
-            if ($name === '') {
-                $status['invalid']++;
-                continue;
+            // Some older members have a usable historical photograph even
+            // though civicrm_contact.image_URL is now empty or points to a
+            // missing original. Try both references for the same contact.
+            // This never changes a public-consent setting or overwrites
+            // existing cached files.
+            $references = [$row->image_URL, $row->historical_image_URL ?? ''];
+            $seen = [];
+            $had_valid_name = false;
+            $existing = false;
+            $created = false;
+            foreach ($references as $reference) {
+                $name = facewall_image_filename($reference);
+                if ($name === '' || isset($seen[$name])) {
+                    continue;
+                }
+                $had_valid_name = true;
+                $seen[$name] = true;
+                $cache_dir = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/';
+                $thumbnail = $cache_dir . '174/tn_' . $name;
+                $poster_image = $cache_dir . 'full_scale/tn_' . $name;
+                if (is_file($thumbnail) && is_file($poster_image)) {
+                    $existing = true;
+                    break;
+                }
+                if (facewall_create_thumbnail('', '', '', 174, $reference) &&
+                    is_file($thumbnail) && is_file($poster_image)) {
+                    $created = true;
+                    break;
+                }
             }
-
-            // A complete FaceWall cache has TWO outputs: the small grid
-            // thumbnail and the larger cropped image used by PDF posters.
-            // Do not skip a member just because the small version exists.
-            $cache_dir = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/';
-            $thumbnail = $cache_dir . '174/tn_' . $name;
-            $poster_image = $cache_dir . 'full_scale/tn_' . $name;
-            if (is_file($thumbnail) && is_file($poster_image)) {
-                $status['existing']++;
-                continue;
-            }
-            if (facewall_create_thumbnail('', '', '', 174, $row->image_URL) &&
-                is_file($thumbnail) && is_file($poster_image)) {
+            if ($created) {
                 $status['created']++;
-            } else {
+            } elseif ($existing) {
+                $status['existing']++;
+            } elseif ($had_valid_name) {
                 $status['failed']++;
+            } else {
+                $status['invalid']++;
             }
         }
 

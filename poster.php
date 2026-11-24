@@ -207,9 +207,11 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 
 	// The poster must display the same current committee year as the officer grid.
 	$poster_committee_year = facewall_current_committee_year();
-	$query = $wpdb->prepare("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, c.id,officer.contact_id, officer.post, officer.weight
+	$query = $wpdb->prepare("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, hist.image_URL AS historical_image_URL, mtype.name, mstatus.name AS m_status, mem.id, c.id,officer.contact_id, officer.post, officer.weight
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
+		LEFT JOIN civicrm_BEC_historical_summary AS hist ON hist.contact_id = c.id
+		    AND hist.id = cust.Membership_Number
 		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
 		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
 		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
@@ -299,7 +301,7 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 			// Prefer the high-resolution cached crop, but retain the small
             // consenting-member thumbnail if the larger copy is missing.
             // Never rebuild images while streaming the PDF.
-            $mugshot = facewall_poster_image_path($row->image_URL, true);
+            $mugshot = facewall_poster_image_path($row->image_URL, true, $row->historical_image_URL);
 			if ($mugshot === '') {
 				$mugshot = __DIR__ . '/img/unknown.jpg';
 			}
