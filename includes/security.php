@@ -40,7 +40,13 @@ function facewall_image_filename($stored) {
 
     $candidate = $parts['path'] ?? '';
     if (isset($parts['query'])) {
-        parse_str($parts['query'], $params);
+        // CiviCRM sometimes stores URL output intended for HTML, where
+        // separators are written as &amp; rather than &. Without decoding,
+        // PHP reads "amp;photo" as the parameter key and misses the picture.
+        // Decode ONLY the query string, then apply the existing strict
+        // local-JPEG/PNG basename validation below; never fetch the URL.
+        $query = html_entity_decode($parts['query'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        parse_str($query, $params);
         if (isset($params['photo']) && is_string($params['photo'])) {
             $candidate = $params['photo'];
         }
