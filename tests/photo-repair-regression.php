@@ -20,6 +20,7 @@ function test_photo($condition, $message) { if (!$condition) { throw new Runtime
 
 class FacewallPhotoTestDB {
     public $queries = [];
+    public $lock_unavailable = false;
     public function prepare($sql, ...$args) {
         foreach ($args as $value) {
             if (strpos($sql, '%d') !== false) {
@@ -34,7 +35,10 @@ class FacewallPhotoTestDB {
     }
     public function get_var($sql) {
         $this->queries[] = $sql;
-        if (strpos($sql, 'GET_LOCK(') !== false || strpos($sql, 'RELEASE_LOCK(') !== false) {
+        if (strpos($sql, 'GET_LOCK(') !== false) {
+            return $this->lock_unavailable ? null : 1;
+        }
+        if (strpos($sql, 'RELEASE_LOCK(') !== false) {
             return 1;
         }
         throw new RuntimeException('Unexpected SQL read');
@@ -120,6 +124,14 @@ try {
     test_photo(strpos($exception->getMessage(), 'Refused:') === 0,
         'Photo repair page failed to enforce admin permission');
 }
+
+// An unavailable database lock is an error, not an anonymous skipped job.
+$GLOBALS['wpdb']->lock_unavailable = true;
+facewall_photo_repair_batch();
+$lock_failure = facewall_photo_repair_status();
+test_photo($lock_failure['state'] === 'failed' &&
+    strpos((string) $lock_failure['error'], 'database') !== false,
+    'Broken repair lock was silently skipped instead of reporting a failure');
 
 foreach ([$small . '/tn_cached.jpg', $small . '/tn_camera photo (1).jpg',
     $full . '/tn_camera photo (1).jpg', $base . '/camera photo (1).jpg'] as $path) {
