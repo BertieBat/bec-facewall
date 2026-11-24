@@ -64,6 +64,16 @@ rmdir(WP_CONTENT_DIR);
 
 class FacewallSecurityTestDB {
     public $queries = [];
+    public function prepare($sql, ...$args) {
+        foreach ($args as $value) {
+            $pos = strpos($sql, '%d');
+            if ($pos === false) {
+                fail_test('Unexpected query parameter in mocked read');
+            }
+            $sql = substr_replace($sql, (string) (int) $value, $pos, 2);
+        }
+        return $sql;
+    }
     public function get_results($query) {
         $this->queries[] = $query;
         return [];
