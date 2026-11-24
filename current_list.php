@@ -2,6 +2,7 @@
 // Public views require WordPress and the shared privacy helpers.
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/render.php';
 /**
  * Helper class for BEC Facewall! module
  * 
@@ -62,23 +63,20 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 	{
 		$row = $result[$result_index];
 		if ( $row_div == 1 ){ 
-			$facewall_output .= '<div class="items-row cols-4 row-0 row-fluid clearfix bec_members_row">';  
+			$facewall_output .= facewall_render_grid_row_open(0);  
 			$row_div++;
 			} 
       
-		$facewall_output .= '<div class="span2">';    
-	        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$facewall_output .= '<div class="page-header">';
-		$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
- 		$facewall_output .= '</div>';
-		$facewall_output .= '<div class="pull-left item-image">';
-		$facewall_output .= '<a>';
-		$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84));
-		$facewall_output .= '</a>';
-		$facewall_output .= '</div>';
-		$facewall_output .= '</div>';
-		$facewall_output .= '</div>';
-	  	if ( $column < $max_column ){
+		$facewall_output .= facewall_render_member_card(
+            $column,
+            facewall_h($row->first_name) . ' ' . facewall_h($row->last_name),
+            facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84)),
+            null,
+            '',
+            true,
+            false
+        );
+        if ( $column < $max_column ){
 			$column++;
 			} 
 		else {
@@ -270,46 +268,27 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 	{
 		$row = $result[$result_index];
 		if ( $row_div == 1 ){ 
-			$joint_output .= '<div class="items-row cols-4 row-0 row-fluid clearfix bec_members_row">';  
+			$joint_output .= facewall_render_grid_row_open(0);  
 			$row_div++;
 			} 
 
 
-		$joint_output .= '<div class="span2">';    
-	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
- 		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-
 		$memberships = get_membership_info($row->near_contact_id, 1);
-		$joint_output .= '<div class="fw_middle">';
-    		$joint_output .= '<div class="text">'.$memberships.'</div>';
-		$joint_output .= '</div>';
-
-		$joint_output .= facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true);
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		//----------------------
-		$joint_output .= '<div class="span2">';    
-	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
- 		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-
+        $joint_output .= facewall_render_member_card(
+            $column,
+            facewall_h($row->civicrm_contact_sort_name_a),
+            facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true),
+            $memberships
+        );
+        //----------------------
 		$memberships = get_membership_info($row->far_contact_id, 1);
-		$joint_output .= '<div class="fw_middle">';
-    		$joint_output .= '<div class="text">'.$memberships.'</div>';
-		$joint_output .= '</div>';
-
-		$joint_output .= facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true);
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-
-		$column++;
+        $joint_output .= facewall_render_member_card(
+            $column,
+            facewall_h($row->civicrm_contact_b_sort_name_b),
+            facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true),
+            $memberships
+        );
+        $column++;
 	  	$row_div = 1;
 	  	$joint_output .= '</div>';  
 			
@@ -490,50 +469,24 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 	{
 		$row = $result[$result_index];
 		if ( $row_div == 1 ){ 
-			$joint_output .= '<div class="items-row cols-4 row-0 row-fluid clearfix bec_members_row">';  
+			$joint_output .= facewall_render_grid_row_open(0);  
 			$row_div++;
 			} 
       
-		$joint_output .= '<div class="span2">';    
-	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$joint_output .= '<div class="page-header">';
-		//$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h5>';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
- 		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-
-		//$memberships = get_membership_info($row->near_contact_id, 0);
-		$joint_output .= '<div class="fw_middle">';
-		//$joint_output .= '<div class="text">'.$memberships.'</div>';
-    		$joint_output .= '<div class="text">'.facewall_summary_html($row->near_summary).'</div>';
-		$joint_output .= '</div>';
-
-
-		//$joint_output .= '<a>';
-		$joint_output .= facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true);
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		//----------------------
-		$joint_output .= '<div class="span2">';    
-	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
- 		$joint_output .= '</div>';
-		$joint_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-
-		//$memberships = get_membership_info($row->far_contact_id, 0);
-		$joint_output .= '<div class="fw_middle">';
-    		$joint_output .= '<div class="text">'.facewall_summary_html($row->far_summary).'</div>';
-		$joint_output .= '</div>';
-
-		//$joint_output .= '<a>';
-		$joint_output .= facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true);
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-		$joint_output .= '</div>';
-
-		$column++;
+		$joint_output .= facewall_render_member_card(
+            $column,
+            facewall_h($row->civicrm_contact_sort_name_a),
+            facewall_photo_html($row->civicrm_contact_image_URL_a, $row->civicrm_contact_sort_name_a, true),
+            facewall_summary_html($row->near_summary)
+        );
+        //----------------------
+		$joint_output .= facewall_render_member_card(
+            $column,
+            facewall_h($row->civicrm_contact_b_sort_name_b),
+            facewall_photo_html($row->civicrm_contact_b_image_URL_b, $row->civicrm_contact_b_sort_name_b, true),
+            facewall_summary_html($row->far_summary)
+        );
+        $column++;
 	  	$row_div = 1;
 	  	$joint_output .= '</div>';  
 			
