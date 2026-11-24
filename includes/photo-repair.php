@@ -10,6 +10,8 @@
  */
 defined('ABSPATH') || exit;
 
+require_once __DIR__ . '/photo-audit.php';
+
 function facewall_photo_repair_status() {
     $status = get_option('facewall_photo_repair_status', []);
     return is_array($status) ? $status : [];
@@ -196,7 +198,11 @@ function facewall_photo_repair_page() {
     echo '<input type="hidden" name="action" value="facewall_photo_repair_queue">';
     wp_nonce_field('facewall_photo_repair_queue');
     submit_button('Repair missing thumbnails', 'primary');
-    echo '</form></div>';
+    echo '</form>';
+    // Investigate individual missing poster photos without altering data.
+    // The audit is restricted to administrators and is read-only.
+    echo facewall_poster_photo_audit_html(facewall_poster_photo_audit($GLOBALS['wpdb']));
+    echo '</div>';
 }
 
 function facewall_photo_repair_queue_action() {

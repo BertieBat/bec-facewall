@@ -296,7 +296,10 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 			}
 			
 			// Use only validated local photos for members who opted in.
-			$mugshot = facewall_full_size_thumbnail_path($row->image_URL, true);
+			// Prefer the high-resolution cached crop, but retain the small
+            // consenting-member thumbnail if the larger copy is missing.
+            // Never rebuild images while streaming the PDF.
+            $mugshot = facewall_poster_image_path($row->image_URL, true);
 			if ($mugshot === '') {
 				$mugshot = __DIR__ . '/img/unknown.jpg';
 			}
