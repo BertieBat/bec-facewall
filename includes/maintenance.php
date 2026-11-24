@@ -141,6 +141,19 @@ function facewall_maintenance_run($stages = null) {
             return 'skipped (already running)';
         }
 
+        $stage_name = 'stage_check';
+        $expected = facewall_maintenance_stages();
+        if (array_keys($stages) !== array_keys($expected)) {
+            throw new FacewallMaintenanceFailure('Maintenance stage list is incomplete or out of order');
+        }
+        foreach ($stages as $key => $definition) {
+            if (!isset($definition['table'], $definition['callback']) ||
+                $definition['table'] !== $expected[$key]['table'] ||
+                !is_callable($definition['callback'])) {
+                throw new FacewallMaintenanceFailure('Maintenance stage configuration is invalid');
+            }
+        }
+
         $stage_name = 'database_check';
         $unsafe = facewall_maintenance_check_engines($wpdb);
         if ($unsafe !== '') {
