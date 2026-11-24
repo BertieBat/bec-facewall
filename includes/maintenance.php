@@ -8,6 +8,9 @@
  */
 defined('ABSPATH') || exit;
 
+/** Only privacy-safe internal failures may appear in diagnostics. */
+class FacewallMaintenanceFailure extends RuntimeException {}
+
 function facewall_maintenance_tables() {
     return [
         'civicrm_BEC_historical_membership',
@@ -99,8 +102,13 @@ function facewall_maintenance_maybe_email_failure($status) {
           . 'Reason: ' . $status['message'] . "\n"
           . "The previous reporting data was rolled back where the database uses InnoDB.\n"
           . "Review WordPress > FaceWall > Diagnostics.\n";
-    if (wp_mail($recipient, '[FaceWall] Reporting rebuild failed', $body)) {
-        update_option('facewall_maintenance_last_alert', $now, false);
+    try {
+        if (wp_mail($recipient, '[FaceWall] Reporting rebuild failed', $body)) {
+            update_option('facewall_maintenance_last_alert', $now, false);
+        }
+    } catch (Throwable $e) {
+        // Mail failures must not alter the result of a reporting rebuild.
+        error_log('FaceWall maintenance: optional notification could not be delivered.');
     }
 }
 
@@ -122,9 +130,13 @@ function facewall_maintenance_run($stages = null) {
     $results = [];
 
     try {
-        $lock = (int) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
+        $lock_result = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
+        if ($lock_result === null || $lock_result === false) {
+            throw new FacewallMaintenanceFailure('Database advisory lock unavailable');
+        }
+        $lock = (int) $lock_result;
         if ($lock !== 1) {
-            // Do not overwrite the status of a job already running.
+            // Another job owns the lock; do not overwrite its health status.
             error_log('FaceWall maintenance: skipped because another rebuild owns the database lock.');
             return 'skipped (already running)';
         }
@@ -132,13 +144,13 @@ function facewall_maintenance_run($stages = null) {
         $stage_name = 'database_check';
         $unsafe = facewall_maintenance_check_engines($wpdb);
         if ($unsafe !== '') {
-            throw new RuntimeException($unsafe);
+            throw new FacewallMaintenanceFailure($unsafe);
         }
 
         // If no current data can be committed, all previous data remains intact.
         $stage_name = 'transaction';
         if ($wpdb->query('START TRANSACTION') === false) {
-            throw new RuntimeException('Unable to start an InnoDB transaction');
+            throw new FacewallMaintenanceFailure('Unable to start an InnoDB transaction');
         }
         $transaction = true;
         $GLOBALS['facewall_maintenance_transaction_active'] = true;
@@ -148,18 +160,23 @@ function facewall_maintenance_run($stages = null) {
             if (!isset($definition['callback'], $definition['table']) ||
                 !in_array($definition['table'], facewall_maintenance_tables(), true) ||
                 !is_callable($definition['callback'])) {
-                throw new RuntimeException('Invalid scheduled maintenance step');
+                throw new FacewallMaintenanceFailure('Invalid scheduled maintenance step');
             }
 
             $step_started = microtime(true);
             $result = call_user_func($definition['callback']);
             if (!is_string($result) || !preg_match('/ - completed$/', $result)) {
-                throw new RuntimeException('Stage returned an unsuccessful result');
+                throw new FacewallMaintenanceFailure('Stage returned an unsuccessful result');
             }
             $table = $definition['table']; // validated against internal table allowlist
             $count = $wpdb->get_var('SELECT COUNT(*) FROM ' . $table);
             if ($count === null || $count === false || !is_numeric($count)) {
-                throw new RuntimeException('Could not validate rebuilt reporting table');
+                throw new FacewallMaintenanceFailure('Could not validate rebuilt reporting table');
+            }
+            // The source checks for histories require real input; never
+            // replace an existing published history with an empty table.
+            if ($stage_name !== 'chart_data' && (int) $count === 0) {
+                throw new FacewallMaintenanceFailure('Rebuild produced no history rows');
             }
             $results[$stage_name] = [
                 'rows' => (int) $count,
@@ -169,21 +186,36 @@ function facewall_maintenance_run($stages = null) {
 
         $stage_name = 'commit';
         if ($wpdb->query('COMMIT') === false) {
-            throw new RuntimeException('Database COMMIT failed');
+            throw new FacewallMaintenanceFailure('Database COMMIT failed');
         }
         $transaction = false;
         $GLOBALS['facewall_maintenance_transaction_active'] = false;
         facewall_maintenance_record('success', '', 'All reporting tables committed together', $started, $results);
         return 'completed';
     } catch (Throwable $e) {
+        $rollback_failed = false;
         if ($transaction) {
-            $wpdb->query('ROLLBACK');
+            try {
+                $rollback_failed = $wpdb->query('ROLLBACK') === false;
+            } catch (Throwable $rollback_error) {
+                $rollback_failed = true;
+            }
         }
         $transaction = false;
         $GLOBALS['facewall_maintenance_transaction_active'] = false;
-        // Do not put raw DB errors, member details or SQL in the public status.
-        $message = $e->getMessage();
-        facewall_maintenance_record('failed', $stage_name, $message, $started, $results);
+        // Unexpected exceptions can contain SQL or personal information.
+        // Display/email only controlled failure messages, never raw exceptions.
+        $message = $e instanceof FacewallMaintenanceFailure
+            ? $e->getMessage()
+            : 'Unexpected maintenance exception (' . get_class($e) . ')';
+        if ($rollback_failed) {
+            $message = 'Rollback failed or uncertain; check reports before retrying';
+        }
+        try {
+            facewall_maintenance_record('failed', $stage_name, $message, $started, $results);
+        } catch (Throwable $logging_error) {
+            error_log('FaceWall: failed to persist maintenance diagnostics.');
+        }
         return 'failed';
     } finally {
         $GLOBALS['facewall_maintenance_transaction_active'] = false;
