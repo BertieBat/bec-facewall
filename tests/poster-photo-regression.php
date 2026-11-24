@@ -40,14 +40,18 @@ require dirname(__DIR__) . '/includes/photo-audit.php';
 $base = WP_CONTENT_DIR . '/uploads/civicrm/custom';
 $small = $base . '/tn/174';
 $full = $base . '/tn/full_scale';
+$app_dir = WP_CONTENT_DIR . '/uploads/bec-membership-photos';
 poster_assert(mkdir($small, 0700, true), 'Could not create small test cache');
 poster_assert(mkdir($full, 0700, true), 'Could not create poster test cache');
+poster_assert(mkdir($app_dir, 0700, true), 'Could not create application photo test folder');
 foreach ([
     $small . '/tn_both.jpg',
     $full . '/tn_both.jpg',
     $small . '/tn_small-only.jpg',
     $full . '/tn_full-only.png',
     $base . '/original-only.jpg',
+    $app_dir . '/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg',
+    $app_dir . '/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg',
 ] as $file) {
     file_put_contents($file, 'Local test fixture');
 }
@@ -97,24 +101,30 @@ $db->rows = [
     (object) ['id' => 17, 'display_name' => 'Malformed', 'image_URL' => '../bad.jpg'],
     (object) ['id' => 18, 'display_name' => 'History Only', 'image_URL' => '', 'historical_image_URL' => 'both.jpg'],
     (object) ['id' => 19, 'display_name' => 'HTML Encoded Current', 'image_URL' => $escaped_url],
+    (object) ['id' => 5327, 'display_name' => 'Ed Connolly', 'image_URL' =>
+        'https://bec-cave.org.uk/wp/wp-content/uploads/bec-membership-photos/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg'],
+    (object) ['id' => 5325, 'display_name' => 'Tim Lewis', 'image_URL' =>
+        'https://bec-cave.org.uk/wp/wp-content/uploads/bec-membership-photos/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg'],
 ];
 poster_assert(isset(facewall_poster_photo_audit($db)['error']) && $db->queries === [],
     'Non-admin audit must not query or reveal member records');
 $GLOBALS['poster_audit_admin'] = true;
 $audit = facewall_poster_photo_audit($db);
 $expected = [
-    'members' => 9, 'complete' => 3, 'full_only' => 1,
-    'small_only' => 1, 'needs_repair' => 1, 'alternate_source' => 0, 'no_source' => 1,
+    'members' => 11, 'complete' => 3, 'full_only' => 1,
+    'small_only' => 1, 'needs_repair' => 3, 'application_source' => 2,
+    'alternate_source' => 0, 'no_source' => 1,
     'no_reference' => 2, 'history_selected' => 1,
 ];
 poster_assert($audit['counts'] === $expected,
     'Poster image audit failed to distinguish small-only, missing-original and no-reference states');
-poster_assert(count($audit['issues']) === 7,
+poster_assert(count($audit['issues']) === 9,
     'Audit must exclude complete caches from attention list');
 $html = facewall_poster_photo_audit_html($audit);
 poster_assert(strpos($html, 'Web thumbnail available') !== false &&
     strpos($html, 'run Photo Repair') !== false &&
-    strpos($html, 'Historical FaceWall') !== false,
+    strpos($html, 'Historical FaceWall') !== false &&
+    strpos($html, 'BEC application original exists') !== false,
     'Audit did not explain repairable and low-resolution photos');
 poster_assert(strpos($html, '<script>Person</script>') === false &&
     strpos($html, '&lt;script&gt;Person&lt;/script&gt;') !== false,
@@ -131,8 +141,9 @@ foreach ([
     $small . '/tn_small-only.jpg',
     $full . '/tn_full-only.png',
     $base . '/original-only.jpg',
+    $app_dir . '/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg', $app_dir . '/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg',
 ] as $file) { @unlink($file); }
-foreach ([$small, $full, $base . '/tn', $base, dirname($base),
+foreach ([$small, $full, $app_dir, $base . '/tn', $base, dirname($base),
     dirname(dirname($base)), dirname(dirname(dirname($base)))] as $folder) {
     @rmdir($folder);
 }
