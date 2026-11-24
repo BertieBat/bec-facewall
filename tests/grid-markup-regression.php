@@ -18,7 +18,7 @@ function grid_member($number, $year = 2026) {
     return (object) [
         'first_name' => 'Member', 'last_name' => (string) $number,
         'display_name' => 'Member ' . $number,
-        'id' => $number, 'club_year' => $year,
+        'id' => $number, 'Membership_Number' => $number, 'club_year' => $year,
         'image_URL' => '', 'facewall_public_84' => '1',
         'summary' => 'Ordinary member',
         'post' => 'Secretary', 'weight' => 10,
