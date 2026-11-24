@@ -128,6 +128,34 @@ sql_or_fail("INSERT INTO civicrm_value_committee_14 (entity_id, post_33)
 sql_or_fail("INSERT INTO civicrm_option_value (label, option_group_id, weight)
     VALUES ('Membership Secretary', 149, 10)");
 
+// Fixture for BEC's membership-type boundary at IDs 7 / 8 / 9,
+// including birthdays immediately before, on and after the 2026 AGM.
+sql_or_fail("INSERT INTO civicrm_membership_type VALUES
+    (7, 'Joint Probationary'), (8, 'Special'), (9, 'BCA Active')");
+sql_or_fail("INSERT INTO civicrm_contact VALUES
+    (71, 'Fixture', '', 'Type Seven', 'Fixture Type Seven', NULL, 0, NULL, '1996-10-04'),
+    (72, 'Fixture', '', 'Type Eight', 'Fixture Type Eight', NULL, 0, NULL, '1996-10-03'),
+    (73, 'Fixture', '', 'Type Nine', 'Fixture Type Nine', NULL, 0, NULL, '1996-10-02'),
+    (74, 'Fixture', '', 'Turns Thirty', 'Fixture Turns Thirty', NULL, 0, NULL, '1996-10-03'),
+    (75, 'Fixture', '', 'Still Twenty Nine', 'Fixture Still Twenty Nine', NULL, 0, NULL, '1996-10-04')");
+sql_or_fail("INSERT INTO custom_value_1_BEC VALUES
+    (71, 1071, 1), (72, 1072, 1), (73, 1073, 1),
+    (74, 1074, 1), (75, 1075, 1)");
+sql_or_fail("INSERT INTO civicrm_membership VALUES
+    (171, 71, 7, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Fixture'),
+    (172, 72, 8, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Fixture'),
+    (173, 73, 9, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Fixture'),
+    (174, 74, 1, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Fixture'),
+    (175, 75, 1, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Fixture')");
+
+// Overlap the existing ordinary member's period: the membership log and
+// legacy table must never produce two rows for one contact in a club year.
+sql_or_fail("INSERT INTO civicrm_membership VALUES
+    (103, 42, 1, '2024-10-01', '2025-01-01', '2026-09-30', 2, 0, 'Overlapping fixture')");
+sql_or_fail("INSERT INTO civicrm_membership_log (membership_id, membership_type_id, status_id, start_date, end_date)
+    VALUES (103, 1, 2, '2025-01-01', '2026-09-30')");
+
+
 sql_or_fail("INSERT INTO civicrm_BEC_historical_membership
     (contact_id, display_name, club_year, start_date, end_date, membership_type)
     VALUES (999, 'Prior', 2020, '2020-01-01', '2020-12-31', 1)");
@@ -147,6 +175,41 @@ foreach (facewall_maintenance_tables() as $table) {
 }
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_membership WHERE contact_id = 42') > 0,
     'Membership history was not generated');
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_membership WHERE contact_id = 42 AND club_year = 2025') === 1,
+    'Overlapping log and legacy periods duplicated the 2025 membership');
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM (
+    SELECT contact_id, club_year FROM civicrm_BEC_historical_membership
+    GROUP BY contact_id, club_year HAVING COUNT(*) > 1
+) AS duplicates') === 0, 'Membership history contains duplicate contact/year records');
+
+// Snapshot today's intentional type thresholds; Release A is not authorised
+// to harmonise the <8 public shortcode and <9 admin/poster policy.
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_membership
+    WHERE contact_id = 71 AND membership_type_id < 8') === 1,
+    'Type 7 should be within the current shortcode boundary');
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_membership
+    WHERE contact_id = 72 AND membership_type_id < 8') === 0,
+    'Type 8 should remain outside the current shortcode boundary');
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_membership
+    WHERE contact_id = 72 AND membership_type_id < 9') === 1,
+    'Type 8 should remain inside legacy admin/poster boundary');
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_membership
+    WHERE contact_id = 73 AND membership_type_id < 9') === 0,
+    'Type 9 must remain outside the admin/poster boundary');
+
+// SQL actually selects the correct birth-date boundary on AGM day:
+$under30_ids = $wpdb->get_results("SELECT c.id FROM civicrm_contact AS c
+    INNER JOIN civicrm_membership AS m ON m.contact_id = c.id
+    INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = c.id
+        AND consent.facewall_public_84 = 1
+    WHERE m.membership_type_id < 9
+      AND c.birth_date > DATE_SUB('2026-10-03', INTERVAL 30 YEAR)");
+$under30_ids = array_map(static function ($row) { return (int) $row->id; }, $under30_ids);
+fixture_assert(in_array(71, $under30_ids, true) && in_array(75, $under30_ids, true) &&
+    !in_array(72, $under30_ids, true) && !in_array(73, $under30_ids, true) &&
+    !in_array(74, $under30_ids, true),
+    'Under-30 AGM eligibility includes an exactly-30 member or excludes someone still 29');
+
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 1,
     'Historical summary was not generated');
 fixture_assert($wpdb->get_var('SELECT image_URL FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 'tn_portrait.jpg',
