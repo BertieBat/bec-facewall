@@ -19,6 +19,9 @@ function facewall_photo_audit_civicrm_directory() {
                 if (class_exists('Civi') && method_exists('Civi', 'paths')) {
                     $configured = Civi::paths()->getPath($configured);
                 }
+                if (!is_string($configured) || $configured === '') {
+                    return '';
+                }
                 $real = realpath($configured);
                 if ($real && is_dir($real)) {
                     return $real;
@@ -104,13 +107,20 @@ function facewall_poster_photo_audit($db) {
         $counts['members']++;
         $current = facewall_photo_audit_candidate($row->image_URL ?? '', $base, $configured);
         $historical = facewall_photo_audit_candidate($row->historical_image_URL ?? '', $base, $configured);
-        // Prefer the current record if it has a usable cache. Otherwise,
-        // check the historical reference that web grids already use.
-        $selected = $current;
-        $origin = 'Current CiviCRM';
-        if ($historical && (!$current || $historical['rank'] > $current['rank'])) {
-            $selected = $historical;
-            $origin = 'Historical FaceWall';
+        // Mirror the PDF's actual order: current full/small cache first,
+        // historical full/small cache second. When neither has a cache,
+        // favour the reference whose original is still recoverable.
+        $current_cached = $current && ($current['small'] || $current['full']);
+        $historical_cached = $historical && ($historical['small'] || $historical['full']);
+        $current_original = $current && ($current['original'] || $current['alternate']);
+        $historical_original = $historical && ($historical['original'] || $historical['alternate']);
+        $prefer_historical = !$current_cached && (
+            $historical_cached || (!$current_original && $historical_original)
+            || (!$current && $historical)
+        );
+        $selected = $prefer_historical ? $historical : $current;
+        $origin = $prefer_historical ? 'Historical FaceWall' : 'Current CiviCRM';
+        if ($prefer_historical) {
             $counts['history_selected']++;
         }
 
