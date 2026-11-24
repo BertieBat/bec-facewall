@@ -51,7 +51,17 @@ function facewall_enqueue_public_styles() {
         'bec-facewall',
         plugins_url('css/facewall.css', dirname(__DIR__) . '/facewall.php'),
         [],
-        is_file($file) ? (string) filemtime($file) : '1.1.1'
+        is_file($file) ? (string) filemtime($file) : '1.1.2'
+    );
+
+    // Target only the Shape5 dropdown labels on pages where FaceWall exists.
+    // This separate style loads after FaceWall's own scoped grid stylesheet.
+    $menu_file = dirname(__DIR__) . '/css/facewall-menu-contrast.css';
+    wp_enqueue_style(
+        'bec-facewall-menu-contrast',
+        plugins_url('css/facewall-menu-contrast.css', dirname(__DIR__) . '/facewall.php'),
+        ['bec-facewall'],
+        is_file($menu_file) ? (string) filemtime($menu_file) : '1.1.2'
     );
 }
 add_action('wp_enqueue_scripts', 'facewall_enqueue_public_styles');

@@ -1,0 +1,42 @@
+/*
+ * FaceWall page only: Shape5/Vertex submenu link contrast.
+ *
+ * The site's floating menu has a white dropdown background. Some sticky
+ * states inherit the white top-level text colour, so the submenu labels
+ * become white-on-white. This intentionally does NOT style the top-level
+ * links, menu backgrounds, item dimensions, or non-FaceWall pages.
+ *
+ * :has() matches the FaceWall shortcode wrapper even when the Shape5 menu
+ * is moved elsewhere in the document as a floating/sticky menu.
+ */
+@supports selector(body:has(.facewall-display)) {
+  body:has(.facewall-display) #s5_nav ul li > a,
+  body:has(.facewall-display) #s5_nav ul li .S5_submenu_item a,
+  body:has(.facewall-display) #s5_nav ul li .s5_sub_a_span,
+  body:has(.facewall-display) #subMenusContainer li > a,
+  body:has(.facewall-display) #subMenusContainer li .S5_submenu_item a,
+  body:has(.facewall-display) #subMenusContainer li .s5_sub_a_span {
+    color: #23343c !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /*
+   * Preserve the theme's white label on its cyan hover/keyboard-focus
+   * highlight, rather than forcing dark text on the selected item.
+   */
+  body:has(.facewall-display) #s5_nav ul li:hover > a,
+  body:has(.facewall-display) #s5_nav ul li:focus-within > a,
+  body:has(.facewall-display) #s5_nav ul li:hover .S5_submenu_item a,
+  body:has(.facewall-display) #s5_nav ul li:focus-within .S5_submenu_item a,
+  body:has(.facewall-display) #s5_nav ul li:hover .s5_sub_a_span,
+  body:has(.facewall-display) #s5_nav ul li:focus-within .s5_sub_a_span,
+  body:has(.facewall-display) #subMenusContainer li:hover > a,
+  body:has(.facewall-display) #subMenusContainer li:focus-within > a,
+  body:has(.facewall-display) #subMenusContainer li:hover .S5_submenu_item a,
+  body:has(.facewall-display) #subMenusContainer li:focus-within .S5_submenu_item a,
+  body:has(.facewall-display) #subMenusContainer li:hover .s5_sub_a_span,
+  body:has(.facewall-display) #subMenusContainer li:focus-within .s5_sub_a_span {
+    color: #ffffff !important;
+  }
+}
