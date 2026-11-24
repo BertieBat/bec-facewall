@@ -22,7 +22,7 @@ function wp_enqueue_style($handle, $url, $dependencies, $version) {
     $GLOBALS['enqueued_styles'][] = compact('handle', 'url', 'dependencies', 'version');
 }
 function facewall_action($atts = [], $content = null, $tag = '') {
-    return '<p>FaceWall test view</p>';
+    return $GLOBALS['facewall_test_rendered'] ?? '<p>FaceWall test view</p>';
 }
 function assert_shortcodes($condition, $description) {
     if (!$condition) { throw new RuntimeException($description); }
@@ -45,6 +45,32 @@ assert_shortcodes(strpos($joint, 'facewall-scope-joint') !== false,
     'Joint member view missing scoped styling class');
 assert_shortcodes(facewall_render_shortcode(['scope' => 'not-a-view']) === '',
     'Unknown scope must not display an invalid wrapper');
+
+// When third-party CSS optimisation fails to load the external stylesheet,
+// the actual shortcode must still include a LOCAL (not global) hover style.
+// It is needed because membership summaries appear before the image in HTML.
+$GLOBALS['facewall_test_rendered'] =
+    '<div class="items-row bec_members_row"><div class="pull-left item-image" tabindex="0">'
+    . '<div class="fw_middle"><div class="text">Ordinary (2019–2027)</div></div>'
+    . '<img class="fw_image" src="/safe-image.jpg"></div></div>';
+$overlay = facewall_render_shortcode(['scope' => 'current']);
+assert_shortcodes(strpos($overlay, '<style class="bec-facewall-overlay-fallback">') !== false,
+    'The shortcode did not include a fallback for the missing external stylesheet');
+assert_shortcodes(strpos($overlay, '.facewall-display .fw_middle{position:absolute!important;') !== false,
+    'The fallback must overlay the photograph instead of moving text above it');
+assert_shortcodes(strpos($overlay, 'opacity:0!important;') !== false &&
+    strpos($overlay, 'visibility:hidden!important;') !== false,
+    'The membership summary must be hidden until hover or focus');
+assert_shortcodes(strpos($overlay, '.facewall-display .item-image:hover>.fw_middle') !== false &&
+    strpos($overlay, '.facewall-display .item-image:focus-within>.fw_middle') !== false &&
+    strpos($overlay, 'opacity:1!important;visibility:visible!important;') !== false,
+    'Hover and keyboard/tap focus must reveal the overlay');
+assert_shortcodes(strpos($overlay, 'navbar') === false &&
+    strpos($overlay, 'nav-collapse') === false &&
+    strpos($overlay, 'body:') === false,
+    'Fallback may not change the website theme navigation');
+unset($GLOBALS['facewall_test_rendered']);
+
 
 assert_shortcodes(isset($GLOBALS['registered_actions']['wp_enqueue_scripts']),
     'FaceWall stylesheet must enqueue before the page HTML body');
@@ -89,6 +115,13 @@ assert_shortcodes(strpos($html, 'Specific numeric years are not supported') !== 
 $css = file_get_contents(dirname(__DIR__) . '/css/facewall.css');
 $css = preg_replace('~/\*.*?\*/~s', '', $css);
 assert_shortcodes(strpos($css, '@media') !== false, 'Responsive grid styling is missing');
+assert_shortcodes(!preg_match('/@media\\s*\\(hover:\\s*none\\)/', $css),
+    'Touch-only rule must not force membership details visible above the image');
+assert_shortcodes(strpos($css, 'visibility: hidden;') !== false &&
+    strpos($css, 'visibility: visible;') !== false &&
+    strpos($css, '.item-image:focus-within') !== false,
+    'Base FaceWall CSS must hide history normally and reveal it on focus/hover');
+
 // Every top-level selector and every selector nested in @media must begin
 // within FaceWall's own namespace. Never target the website theme.
 preg_match_all('/(?:^|})\s*([^{}]+)\{/m', $css, $rules);

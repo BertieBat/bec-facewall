@@ -36,8 +36,34 @@ function facewall_render_shortcode($atts = [], $content = null, $tag = '') {
     if (!in_array($scope, $allowed, true)) {
         return '';
     }
+    // A scoped, minimal hover-style fallback is included WITH the shortcode.
+    // Some themes/CDNs defer or omit enqueued plugin CSS; without a fallback
+    // the membership history is rendered above the photograph as plain text.
+    // Unlike the old global Bootstrap stylesheet, these selectors cannot
+    // affect the site navigation or other pages.
+    $overlay_css = '';
+    if (strpos($rendered, 'class="fw_middle"') !== false) {
+        $overlay_css = '<style class="bec-facewall-overlay-fallback">'
+            . '.facewall-display .item-image{position:relative!important;max-width:174px;}'
+            . '.facewall-display .fw_middle{position:absolute!important;inset:0!important;'
+            . 'z-index:2;display:flex!important;align-items:center;justify-content:center;'
+            . 'overflow-y:auto;box-sizing:border-box;opacity:0!important;'
+            . 'visibility:hidden!important;pointer-events:none!important;'
+            . 'padding:.4rem;text-align:center;transition:opacity .25s ease;}'
+            . '.facewall-display .fw_middle .text{color:#111!important;'
+            . 'font-size:12px!important;line-height:1.35;overflow-wrap:anywhere;}'
+            . '.facewall-display .item-image:hover>.fw_middle,'
+            . '.facewall-display .item-image:focus-within>.fw_middle'
+            . '{opacity:1!important;visibility:visible!important;pointer-events:auto!important;}'
+            . '.facewall-display .item-image:hover .fw_image,'
+            . '.facewall-display .item-image:focus-within .fw_image'
+            . '{opacity:.3!important;}'
+            . '.facewall-display .item-image:focus-visible{outline:2px solid currentColor;'
+            . 'outline-offset:3px;}'
+            . '</style>';
+    }
     return '<div class="facewall-display facewall-scope-' . esc_attr($scope) . '">'
-        . $rendered . '</div>';
+        . $overlay_css . $rendered . '</div>';
 }
 
 /**
