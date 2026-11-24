@@ -55,7 +55,10 @@ function facewall_image_filename($stored) {
     if (strncmp($candidate, 'tn_', 3) === 0) {
         $candidate = substr($candidate, 3);
     }
-    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,179}\.(?:jpe?g|png)$/iD', $candidate)) {
+    // Common camera/upload filenames may include spaces, plus signs,
+    // parentheses or Unicode letters. Never permit separators, traversal,
+    // extensions other than local JPEG/PNG, or control characters.
+    if (!preg_match('~^[\\p{L}\\p{N}][\\p{L}\\p{N}._ ()+\\-]{0,179}\\.(?:jpe?g|png)$~iuD', $candidate)) {
         return '';
     }
     return $candidate;
@@ -90,9 +93,12 @@ function facewall_photo_html($stored, $name = '', $is_public = false) {
         return facewall_unknown_image_html($name);
     }
 
+    // The URL needs encoding, but filesystem checks must use the real name.
+    // This preserves safe legacy filenames containing spaces or Unicode.
+    $web_relative = '/uploads/civicrm/custom/tn/174/tn_' . rawurlencode($filename);
     $url = function_exists('content_url')
-        ? content_url($relative)
-        : '/wp/wp-content' . $relative;
+        ? content_url($web_relative)
+        : '/wp/wp-content' . $web_relative;
     return '<img src="' . facewall_h($url)
         . '" class="fw_image" width="174" height="205" loading="lazy" alt="'
         . facewall_h($name) . '">';
