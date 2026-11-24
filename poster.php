@@ -2,6 +2,8 @@
 // This script must only be loaded through the WordPress plugin.
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/calendar.php';
+require_once __DIR__ . '/includes/poster-layout.php';
 /**
  * Create a Poster of all BEC members
  * 
@@ -203,7 +205,9 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, c.id,officer.contact_id, officer.post, officer.weight
+	// The poster must display the same current committee year as the officer grid.
+	$poster_committee_year = facewall_current_committee_year();
+	$query = $wpdb->prepare("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, c.id,officer.contact_id, officer.post, officer.weight
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
@@ -213,10 +217,10 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 		    SELECT contact_id, post, weight, club_year,
 		           ROW_NUMBER() OVER (PARTITION BY contact_id ORDER BY weight ASC) as rn
 			   FROM civicrm_BEC_historical_officer_membership 
-			   WHERE club_year = ".date("Y")."
+			   WHERE club_year = %d
 			) as officer ON c.id = officer.contact_id AND officer.rn = 1
 		WHERE mtype.id <9 AND status_id <4 AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY last_name, first_name");
+		ORDER BY last_name, first_name", $poster_committee_year);
 
 
 
@@ -246,24 +250,29 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 
 
 	$members = count($result);
-	$rows = 10;
-	$columns = ceil($members / $rows);
+	$y = $pdf->GetY();
 
-	$x = 15 + $bleed_x;
-	//$y = PDF_MARGIN_TOP+ $bleed_y;
-	$y = $pdf->GetY(); // Get the current Y position
-
-	// the actual images are sized 204 * 175 px
-	// calculate the width of the images rather than hardcoding
-	$min_spacer_width = 5;
-
-	// to do this we set the minimum space size.
-	$image_width = ceil(($base_page_w -PDF_MARGIN_LEFT -PDF_MARGIN_RIGHT - (($columns-1) * $min_spacer_width)) /$columns);
-	// then extrapolate the height based on the aspect ratio of stored images
-	$image_height = $image_width * (204/175);
-	// fine tune the spacing
-	$spacer_x = ($base_page_w - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT - ($image_width * $columns))/($columns - 1);
-	$spacer_y = ($page_h -$bleed_y - $last_y - PDF_MARGIN_BOTTOM - 5 - ($image_height * $rows))/($rows - 1);
+	// A1/RA1/SRA1 grids are sized against both available page width and
+	// remaining height. This also supports 1–10 members without zero division
+	// or huge portraits extending beyond the bottom of the page.
+	try {
+		$layout = facewall_poster_grid_layout(
+			$members,
+			$base_page_w,
+			$page_h - $bleed_y - $last_y - PDF_MARGIN_BOTTOM - 5,
+			PDF_MARGIN_LEFT,
+			PDF_MARGIN_RIGHT
+		);
+	} catch (Throwable $error) {
+		wp_die('The poster page has insufficient room to lay out members.');
+	}
+	$rows = $layout['rows'];
+	$columns = $layout['columns'];
+	$image_width = $layout['image_width'];
+	$image_height = $layout['image_height'];
+	$spacer_x = $layout['spacer_x'];
+	$spacer_y = $layout['spacer_y'];
+	$x = $layout['start_x'] + $bleed_x;
 
 
 	$index = 0 ;	//used to loop through the SQL results
@@ -350,7 +359,7 @@ function create_poster($fw_title, $sheet_size, $variant = '')
 			$x += $image_width + $spacer_x ;
 		}
 	$y += $image_height+ $spacer_y ; // new row 55
-	$x = 15 + $bleed_x ; //start at the left again
+	$x = $layout['start_x'] + $bleed_x; // reset to the computed first column
 	}
 
 	if (($members % $columns) != 0 ){

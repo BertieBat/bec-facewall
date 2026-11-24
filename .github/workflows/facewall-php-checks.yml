@@ -46,6 +46,7 @@ jobs:
           php tests/shortcodes-and-style-regression.php
           php tests/grid-markup-regression.php
           php tests/photo-repair-regression.php
+          php tests/release-a-regression.php
 
   mariadb-integration:
     name: MariaDB transaction and rollback integration
