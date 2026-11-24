@@ -50,6 +50,9 @@ function facewall_photo_repair_batch() {
 
     try {
         $lock_result = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
+        if ($lock_result === null || $lock_result === false) {
+            throw new RuntimeException('Photo maintenance database lock unavailable');
+        }
         if ((int) $lock_result !== 1) {
             // Another worker may still be running; retry this cursor later.
             wp_schedule_single_event(time() + 90, 'facewall_repair_photos');
@@ -197,7 +200,13 @@ function facewall_photo_repair_queue_action() {
     }
     check_admin_referer('facewall_photo_repair_queue');
 
-    if (!wp_next_scheduled('facewall_repair_photos')) {
+    $existing_status = facewall_photo_repair_status();
+    $updated = !empty($existing_status['last_update'])
+        ? strtotime((string) $existing_status['last_update']) : false;
+    $busy = ($existing_status['state'] ?? '') === 'running' &&
+        $updated && $updated > time() - 15 * 60;
+
+    if (!wp_next_scheduled('facewall_repair_photos') && !$busy) {
         $initial = [
             'state' => 'queued',
             'last_update' => gmdate('c'),
@@ -209,6 +218,10 @@ function facewall_photo_repair_queue_action() {
             'failed' => 0,
         ];
         if (wp_schedule_single_event(time() + 10, 'facewall_repair_photos')) {
+            update_option('facewall_photo_repair_status', $initial, false);
+        } else {
+            $initial['state'] = 'failed';
+            $initial['error'] = 'WordPress could not schedule the photo repair task';
             update_option('facewall_photo_repair_status', $initial, false);
         }
     }
