@@ -150,6 +150,18 @@ assert_markers($tables, 'old');
 expect_db(get_option('facewall_maintenance_status')['failed_stage'] === 'officer_history', 'Failure diagnostics wrong');
 
 seed_old($tables);
+$empty_stages = stage_list();
+$empty_stages['membership_history']['callback'] = static function () {
+    global $wpdb;
+    expect_db($wpdb->query('DELETE FROM civicrm_BEC_historical_membership') !== false,
+        'Could not produce empty test history');
+    return 'test - completed';
+};
+expect_db(facewall_maintenance_run($empty_stages) === 'failed',
+    'An empty history was incorrectly published');
+assert_markers($tables, 'old');
+
+seed_old($tables);
 expect_db($wpdb->query('ALTER TABLE civicrm_BEC_current_year ENGINE=MyISAM') !== false, 'Cannot set up nontransactional table');
 expect_db(facewall_maintenance_run(stage_list()) === 'failed', 'MyISAM should prevent transaction');
 assert_markers($tables, 'old');
