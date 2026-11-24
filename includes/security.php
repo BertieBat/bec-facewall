@@ -122,3 +122,25 @@ function facewall_full_size_thumbnail_path($stored, $is_public = false) {
     $path = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/full_scale/tn_' . $filename;
     return is_file($path) ? $path : '';
 }
+
+
+/**
+ * A poster prefers the larger cached crop, but a consenting member's
+ * existing 174px FaceWall thumbnail is better than the placeholder.
+ * This is a read-only path decision: never create files during a PDF request.
+ */
+function facewall_poster_image_path($stored, $is_public = false) {
+    $full = facewall_full_size_thumbnail_path($stored, $is_public);
+    if ($full !== '') {
+        return $full;
+    }
+    if (!$is_public || !defined('WP_CONTENT_DIR')) {
+        return '';
+    }
+    $filename = facewall_image_filename($stored);
+    if ($filename === '') {
+        return '';
+    }
+    $path = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/174/tn_' . $filename;
+    return is_file($path) ? $path : '';
+}
