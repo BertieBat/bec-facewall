@@ -72,7 +72,7 @@ $GLOBALS['facewall_test_is_admin'] = true;
 ob_start();
 facewall_shortcodes_admin_page();
 $html = ob_get_clean();
-assert_shortcodes(substr_count($html, '<tr>') === count($scopes),
+assert_shortcodes(substr_count($html, '<tr>') === count($scopes) + 1,
     'Every supported scope needs exactly one admin table row');
 assert_shortcodes(strpos($html, '[facewall]') !== false &&
     strpos($html, 'scope=&quot;officer_grid_year&quot;') !== false &&
