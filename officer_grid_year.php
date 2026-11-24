@@ -95,7 +95,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 			// and then the name
 			//$facewall_output .= $row->display_name;
 			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image">';
+			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
@@ -212,7 +212,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 			// and then the name
 			//$facewall_output .= $row->display_name;
 			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image">';
+			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
@@ -364,7 +364,7 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 			// and then the name
 			//$facewall_output .= $row->display_name;
 			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image">';
+			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
@@ -469,7 +469,7 @@ function display_all_membership()
 			// and then the name
 			$facewall_output .= facewall_h($row->display_name);
 			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image">';
+			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
 			$facewall_output .= '<div class="fw_middle">';
 
 			// membership summary
