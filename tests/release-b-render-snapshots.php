@@ -6,6 +6,12 @@
  *
  * Until snapshots are frozen, print deterministic SHA-256 hashes in CI.
  */
+// Freeze the BEC AGM year in fixtures so the snapshots remain valid
+// after a real calendar-year/AGM rollover.
+function wp_date($format) {
+    if ($format === 'Y-m-d') { return '2026-11-24'; }
+    throw new RuntimeException('Unexpected wp_date format in grid fixture');
+}
 require __DIR__ . '/grid-markup-regression.php';
 
 function facewall_release_b_hashes() {
@@ -30,6 +36,16 @@ function facewall_release_b_hashes() {
         foreach ($views as $view => $html) {
             if (!is_string($html) || $html === '') {
                 throw new RuntimeException('Snapshot unexpectedly empty for ' . $view);
+            }
+            if ($view === 'probationary') {
+                // This old view calculates the time since join_date with a
+                // native new DateTime(). Normalize ONLY that changing number,
+                // while preserving all the actual tags and static text.
+                $html = preg_replace(
+                    '~(<h5 itemprop="name" max-width=250px>)[^<]*(<br>[0-9]{4}, [A-Za-z]+<br>)~',
+                    '$1__ELAPSED__$2',
+                    $html
+                );
             }
             $hashes[$prefix . $view] = hash('sha256', $html);
         }
