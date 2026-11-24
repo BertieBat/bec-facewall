@@ -495,9 +495,11 @@ function facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_wid
     if (!$source_dir) {
         return false;
     }
-    $source = realpath($source_dir . '/' . $filename);
-    if (!$source || strpos($source, $source_dir . DIRECTORY_SEPARATOR) !== 0 ||
-        !is_file($source) || filesize($source) > 15 * 1024 * 1024) {
+    // Approved application portraits live outside CiviCRM's custom folder.
+    // Resolve the original through a strict local allowlist, while still
+    // writing both generated thumbnails to the existing CiviCRM cache.
+    $source = facewall_photo_original_path($filename);
+    if ($source === '' || filesize($source) > 15 * 1024 * 1024) {
         return false;
     }
     $info = @getimagesize($source);
