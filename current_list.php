@@ -41,12 +41,6 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 	$row_div = 1;
 	//$image_dir = "media/civicrm/custom/";
 	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	$result_index = 0 ;
 	$result_count = count($result);
 
@@ -242,16 +236,8 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 	}
 
         $column = 1;
-	$max_column = 2;
 	$row = 1;
 	$row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	$result_index = 0 ;
 	$result_count = count($result);
 	$member_count = 2 * $result_count;
@@ -450,17 +436,10 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 	}
 
         $column = 1;
-	$max_column = 2;
 	$row = 1;
 	$row_div = 1;
 	//$image_dir = "media/civicrm/custom/";
 	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	$result_index = 0 ;
 	$result_count = count($result);
 	$member_count = 2 * $result_count;
