@@ -60,6 +60,7 @@ class FacewallPhotoTestDB {
             (object) ['id' => 8, 'image_URL' => 'orphan-small.jpg'],
             (object) ['id' => 9, 'image_URL' => '', 'historical_image_URL' => 'historical-recovered.jpg'],
             (object) ['id' => 10, 'image_URL' => 'unavailable-original.jpg', 'historical_image_URL' => 'cached.jpg'],
+            (object) ['id' => 11, 'image_URL' => 'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;task=civicrm/file&amp;photo=encoded.jpg'],
         ];
     }
     public function query($sql) { throw new RuntimeException('Photo repair must never write to member DB tables'); }
@@ -100,6 +101,7 @@ imagejpeg($image, $base . '/camera photo (1).jpg');
 imagejpeg($image, $base . '/only-small.jpg');
 imagejpeg($image, $base . '/only-full.jpg');
 imagejpeg($image, $base . '/historical-recovered.jpg');
+imagejpeg($image, $base . '/encoded.jpg');
 imagedestroy($image);
 
 test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknown.jpg') !== false,
@@ -108,12 +110,14 @@ test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknow
 facewall_photo_repair_batch();
 $status = facewall_photo_repair_status();
 test_photo(($status['state'] ?? '') === 'completed', 'Small repair batch did not complete');
-foreach (['checked' => 10, 'existing' => 2, 'created' => 4, 'invalid' => 2, 'failed' => 2] as $field => $count) {
+foreach (['checked' => 11, 'existing' => 2, 'created' => 5, 'invalid' => 2, 'failed' => 2] as $field => $count) {
     test_photo(($status[$field] ?? null) === $count,
         'Photo repair ' . $field . ' expected ' . $count . ', got ' . ($status[$field] ?? 'unset'));
 }
 test_photo(is_file($small . '/tn_camera photo (1).jpg'), 'Consented missing thumbnail was not recreated');
 test_photo(is_file($full . '/tn_camera photo (1).jpg'), 'Full-scale cached photo was not recreated');
+test_photo(is_file($small . '/tn_encoded.jpg') && is_file($full . '/tn_encoded.jpg'),
+    'Photo Repair did not generate thumbnails from the HTML-encoded CiviCRM URL');
 test_photo(is_file($small . '/tn_historical-recovered.jpg') &&
     is_file($full . '/tn_historical-recovered.jpg'),
     'Photo Repair ignored a consenting member whose current reference was blank but historical source existed');
@@ -168,8 +172,9 @@ foreach ([
     $small . '/tn_only-full.jpg', $full . '/tn_only-full.jpg',
     $small . '/tn_camera photo (1).jpg', $full . '/tn_camera photo (1).jpg',
     $small . '/tn_historical-recovered.jpg', $full . '/tn_historical-recovered.jpg',
+    $small . '/tn_encoded.jpg', $full . '/tn_encoded.jpg',
     $base . '/camera photo (1).jpg', $base . '/only-small.jpg', $base . '/only-full.jpg',
-    $base . '/historical-recovered.jpg',
+    $base . '/historical-recovered.jpg', $base . '/encoded.jpg',
 ] as $path) {
     @unlink($path);
 }

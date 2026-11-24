@@ -26,6 +26,32 @@ foreach ([0, '0', null, '', 2, 'true', true] as $not_consent) {
 expect_security('normal.jpg', facewall_image_filename('https://bec-cave.org.uk/path/tn_normal.jpg'), 'CiviCRM tn_ prefix');
 expect_security('normal.png', facewall_image_filename('tn_normal.png'), 'Cached historical thumbnail');
 expect_security('normal.jpg', facewall_image_filename('https://bec-cave.org.uk/photo?photo=normal.jpg'), 'CiviCRM photo query parameter');
+// CiviCRM 2026 live-data regression: 104 of 189 eligible contact photo URLs
+// use HTML-encoded query delimiters. The photograph must be found without
+// removing query parameters, fetching URLs, or weakening path validation.
+$encoded_civicrm = 'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;task=civicrm/file&amp;photo=normal.jpg';
+expect_security('normal.jpg', facewall_image_filename($encoded_civicrm),
+    'HTML-escaped CiviCRM index.php photo URL');
+expect_security('normal.jpg', facewall_image_filename(
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&task=civicrm/file&photo=normal.jpg'),
+    'Normal CiviCRM index.php photo URL');
+expect_security('normal.jpg', facewall_image_filename(
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&#38;task=civicrm/file&#38;photo=normal.jpg'),
+    'Numeric-entity CiviCRM photo URL');
+expect_security('normal.jpg', facewall_image_filename(
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo=normal.jpg&amp;download=1'),
+    'HTML-escaped photo parameter before additional parameters');
+foreach ([
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo=..%2Fprivate.jpg',
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo=%2e%2e%2fprivate.png',
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo=script.php',
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo=not-an-image.svg',
+    'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;photo%5B0%5D=normal.jpg',
+] as $invalid_encoded) {
+    expect_security('', facewall_image_filename($invalid_encoded),
+        'Unsafe encoded CiviCRM photo reference must be rejected');
+}
+
 foreach (['../../secret.jpg', '%2e%2e%2fsecret.png', 'shell.php', 'image.svg', "test.jpg\0.php", ''] as $invalid) {
     expect_security('', facewall_image_filename($invalid), 'Unsafe photo filename must be rejected');
 }
@@ -47,10 +73,14 @@ $opted_out = facewall_photo_html('/path/normal.jpg', '<person>', false);
 if (strpos($opted_out, 'tn_normal.jpg') !== false || strpos($opted_out, 'unknown.jpg') === false) {
     fail_test('Non-consenting member photo was displayed');
 }
-$opted_in = facewall_photo_html('/path/normal.jpg', '"Alice"', true);
+$opted_in = facewall_photo_html($encoded_civicrm, '"Alice"', true);
 if (strpos($opted_in, 'tn_normal.jpg') === false || strpos($opted_in, '&quot;Alice&quot;') === false) {
     fail_test('Consent photo URL or alt-attribute escaped incorrectly');
 }
+if (strpos(facewall_photo_html($encoded_civicrm, 'Private', false), 'unknown.jpg') === false) {
+    fail_test('HTML-encoded photo URL must not bypass public consent');
+}
+
 if (strpos(facewall_photo_html('../../secret.jpg', 'Secret', true), 'unknown.jpg') === false) {
     fail_test('A traversal path must never be used as a picture');
 }
