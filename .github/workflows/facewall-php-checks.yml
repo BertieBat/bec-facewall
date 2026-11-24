@@ -74,4 +74,6 @@ jobs:
           extensions: mysqli
           coverage: none
       - name: Test atomic reporting rebuilds against disposable MariaDB
-        run: php tests/maintenance-mariadb.php
+        run: |
+          php tests/maintenance-mariadb.php
+          php tests/maintenance-full-fixture.php
