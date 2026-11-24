@@ -51,6 +51,7 @@ jobs:
           php tests/release-c-regression.php
           php tests/release-d-regression.php
           php tests/photo-repair-regression.php
+          php tests/poster-photo-regression.php
           php tests/release-a-regression.php
 
   mariadb-integration:
