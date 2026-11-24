@@ -13,9 +13,17 @@ $GLOBALS['fake_emails'] = [];
 $GLOBALS['fake_admin'] = false;
 function get_current_blog_id() { return 1; }
 function get_option($name, $default = false) { return $GLOBALS['fake_options'][$name] ?? $default; }
-function update_option($name, $value, $autoload = null) { $GLOBALS['fake_options'][$name] = $value; return true; }
+function update_option($name, $value, $autoload = null) {
+    if (!empty($GLOBALS['fake_update_error'])) { throw new RuntimeException('Simulated option storage failure'); }
+    $GLOBALS['fake_options'][$name] = $value;
+    return true;
+}
 function is_email($address) { return filter_var($address, FILTER_VALIDATE_EMAIL) !== false; }
-function wp_mail($to, $subject, $message) { $GLOBALS['fake_emails'][] = compact('to', 'subject', 'message'); return true; }
+function wp_mail($to, $subject, $message) {
+    if (!empty($GLOBALS['fake_mail_error'])) { throw new RuntimeException('Simulated mail transport failure'); }
+    $GLOBALS['fake_emails'][] = compact('to', 'subject', 'message');
+    return true;
+}
 function add_action($hook, $callback) { $GLOBALS['fake_hooks'][$hook][] = $callback; }
 function current_user_can($capability) { return $GLOBALS['fake_admin']; }
 function wp_die($message) { throw new RuntimeException('DENIED: ' . $message); }
@@ -33,6 +41,7 @@ class FacewallFakeDatabase {
     public $rows = [];
     public $queries = [];
     public $locking = true;
+    public $lock_broken = false;
     public $locked = false;
     public $in_transaction = false;
     public $last_error = '';
@@ -56,6 +65,7 @@ class FacewallFakeDatabase {
     public function get_var($sql) {
         $this->queries[] = $sql;
         if (strpos($sql, 'GET_LOCK(') !== false) {
+            if ($this->lock_broken) { return null; }
             if (!$this->locking) { return 0; }
             $this->locked = true;
             return 1;
@@ -168,6 +178,64 @@ $wpdb->locking = false;
 $previous = get_option('facewall_maintenance_status');
 assert_maintenance(facewall_maintenance_run(test_stages()) === 'skipped (already running)', 'Lock contention should skip');
 assert_maintenance(get_option('facewall_maintenance_status') === $previous, 'Lock contention overwrote diagnostics');
+
+// Missing database lock metadata must be a visible failure, not mistaken for
+// an already-running job (which intentionally preserves the previous status).
+$wpdb = new FacewallFakeDatabase();
+$wpdb->lock_broken = true;
+assert_maintenance(facewall_maintenance_run(test_stages()) === 'failed',
+    'Broken database lock query must be reported as failure');
+assert_maintenance(get_option('facewall_maintenance_status')['failed_stage'] === 'initialisation',
+    'Database lock failure status was not recorded');
+
+// Refuse incomplete maintenance steps before entering a transaction.
+$wpdb = new FacewallFakeDatabase();
+$incomplete = test_stages();
+unset($incomplete['chart_data']);
+assert_maintenance(facewall_maintenance_run($incomplete) === 'failed', 'Incomplete stages should fail');
+assert_maintenance(!in_array('START TRANSACTION', $wpdb->queries, true), 'Incomplete stages started a transaction');
+
+// Unexpectedly empty history would wipe a published list; it must roll back.
+$wpdb = new FacewallFakeDatabase();
+$empty = test_stages();
+$empty['membership_history']['callback'] = static function () {
+    global $wpdb;
+    $wpdb->query('DELETE FROM civicrm_BEC_historical_membership');
+    return 'simulated - completed';
+};
+assert_maintenance(facewall_maintenance_run($empty) === 'failed', 'Empty history was committed');
+assert_maintenance($wpdb->rows['civicrm_BEC_historical_membership'] === ['original'],
+    'Unexpectedly empty history was not rolled back');
+
+// Unexpected exception messages can contain names or SQL: never put them
+// into WordPress options or optional administrator emails.
+$wpdb = new FacewallFakeDatabase();
+$unexpected = test_stages();
+$unexpected['officer_history']['callback'] = static function () {
+    throw new RuntimeException('Member Jane Smith: SQL INSERT INTO secret_table');
+};
+assert_maintenance(facewall_maintenance_run($unexpected) === 'failed', 'Exception failed to abort the job');
+$public_message = get_option('facewall_maintenance_status')['message'];
+assert_maintenance(strpos($public_message, 'Jane Smith') === false && strpos($public_message, 'INSERT INTO') === false,
+    'Private exception details leaked into maintenance status');
+
+// Notification transport failures are isolated from reporting state.
+$GLOBALS['fake_options']['facewall_maintenance_email_alerts'] = '1';
+$GLOBALS['fake_options']['admin_email'] = 'administrator@example.test';
+$GLOBALS['fake_mail_error'] = true;
+$wpdb = new FacewallFakeDatabase();
+assert_maintenance(facewall_maintenance_run(test_stages('chart_data')) === 'failed',
+    'Failure reporting crashed due to notification transport failure');
+unset($GLOBALS['fake_mail_error']);
+$GLOBALS['fake_options']['facewall_maintenance_email_alerts'] = '0';
+
+// The database COMMIT is authoritative even if WordPress option storage
+// becomes unavailable immediately after committing all reporting data.
+$GLOBALS['fake_update_error'] = true;
+$wpdb = new FacewallFakeDatabase();
+assert_maintenance(facewall_maintenance_run(test_stages()) === 'completed',
+    'A successful COMMIT was misclassified after diagnostics storage failure');
+unset($GLOBALS['fake_update_error']);
 
 // The previous success remains visible after a failed attempt.
 $wpdb = new FacewallFakeDatabase();
