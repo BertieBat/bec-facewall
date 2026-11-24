@@ -3,7 +3,7 @@
    Plugin Name: facewall
    Plugin URI: https://github.com/speleo 
    description: Displays a custom grid facewall of active members from a CiviCRM database on Wordpress
-   Version: 1.1.10
+   Version: 1.1.11
    Author: Henry Bennett
    Author URI: https://github.com/speleo
    
