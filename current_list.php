@@ -302,28 +302,36 @@ function get_membership_info($contact_id, $show_status) {
 		return '';
 	}
 
-	// Reuse labels across the pair cards rather than querying identical types
-	// and statuses repeatedly.
+	// Memoize by contact within this request: a joint relationship can place
+	// the same contact in multiple cards. Type and status labels are also
+	// cached, so repeated displays avoid three classes of duplicate API call.
 	static $type_names = [];
 	static $status_names = [];
+	static $memberships_by_contact = [];
+	static $civicrm_ready = false;
 
 	try {
-		civicrm_initialize();
-		// Do not restrict to type 1 (Ordinary): joint members also have other
-		// membership types and possibly a separate joint discount.
-		$result = civicrm_api3('Membership', 'get', [
-			'contact_id' => $contact_id,
-			'options' => ['limit' => 0],
-		]);
-
-		if (!is_array($result) || !empty($result['is_error'])
-			|| !isset($result['values']) || !is_array($result['values'])) {
-			error_log('Facewall: invalid Membership API result for contact ' . $contact_id);
-			return '';
+		if (!array_key_exists($contact_id, $memberships_by_contact)) {
+			if (!$civicrm_ready) {
+				civicrm_initialize();
+				$civicrm_ready = true;
+			}
+			// Do not restrict to Ordinary: joint members can have several
+			// membership types, including a separate joint discount.
+			$result = civicrm_api3('Membership', 'get', [
+				'contact_id' => $contact_id,
+				'options' => ['limit' => 0],
+			]);
+			if (!is_array($result) || !empty($result['is_error'])
+				|| !isset($result['values']) || !is_array($result['values'])) {
+				error_log('FaceWall: joint membership API returned invalid data.');
+				return '';
+			}
+			$memberships_by_contact[$contact_id] = $result['values'];
 		}
 
 		$details = [];
-		foreach ($result['values'] as $membership) {
+		foreach ($memberships_by_contact[$contact_id] as $membership) {
 			if (!is_array($membership)) {
 				continue;
 			}
