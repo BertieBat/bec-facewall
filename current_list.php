@@ -2,6 +2,7 @@
 // Public views require WordPress and the shared privacy helpers.
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/member-query.php';
 require_once __DIR__ . '/includes/render.php';
 /**
  * Helper class for BEC Facewall! module
@@ -22,14 +23,7 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, cust.facewall_public_84
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('legacy', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$result = $wpdb->get_results($query);
