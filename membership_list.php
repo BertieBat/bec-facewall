@@ -247,6 +247,16 @@ function get_membership_data($query)
 
 
 
+				// CiviCRM legacy data can contain blank or zero join dates.
+				// Never insert an invalid date into a strict SQL DATE column.
+				$join_date = (string) ($row->cv_join_date ?? '');
+				$join_parts = explode('-', $join_date);
+				if (count($join_parts) !== 3 ||
+					!ctype_digit($join_parts[0]) || !ctype_digit($join_parts[1]) || !ctype_digit($join_parts[2]) ||
+					!checkdate((int) $join_parts[1], (int) $join_parts[2], (int) $join_parts[0])) {
+					$join_date = (string) $row->cv_start_date;
+				}
+
 				// A unique index on club_year/contact_id prevents two rows for the same
 				// member/year. Keep the membership-log row ahead of the legacy fallback.
 				$insert_query = $wpdb->prepare(
@@ -257,8 +267,7 @@ function get_membership_data($query)
 					(int) $row->cv_contact_id,
 					(string) $row->cv_display_name,
 					(int) $mem_club_year,
-					!empty($row->cv_join_date) && strtotime($row->cv_join_date) !== false
-						? (string) $row->cv_join_date : (string) $row->cv_start_date,
+					$join_date,
 					(string) $row->cv_start_date,
 					(string) $row->cv_end_date,
 					(int) $row->cv_membership_type_id
