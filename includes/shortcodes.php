@@ -7,21 +7,75 @@
  */
 defined('ABSPATH') || exit;
 
+/**
+ * Single source of truth for shortcode documentation AND runtime handlers.
+ *
+ * Values are plugin-authored constants, not user-controlled callables. BEC's
+ * existing membership-type/status filters are deliberately retained verbatim.
+ */
 function facewall_shortcode_catalog() {
     return [
-        ['scope' => 'current', 'title' => 'Current members', 'description' => 'Photographic grid of current BEC members.', 'note' => 'This is also the default when scope is omitted.'],
-        ['scope' => 'probationary', 'title' => 'Probationary members', 'description' => 'Photo grid of probationary members.', 'note' => ''],
-        ['scope' => 'grace', 'title' => 'Members in grace', 'description' => 'Photo grid of memberships in the grace status.', 'note' => ''],
-        ['scope' => 'lybnty', 'title' => 'Last Year But Not This Year', 'description' => 'Photo grid of previous-year members not renewed this year.', 'note' => 'Uses the membership status configured in the existing FaceWall query.'],
-        ['scope' => 'joint', 'title' => 'Joint members', 'description' => 'Joint membership pairs, including the separate unusual-pairs section.', 'note' => 'Both members must have FaceWall public visibility enabled.'],
-        ['scope' => 'life', 'title' => 'Life members', 'description' => 'Photo grid of Life, Joint Life and Honorary Life members.', 'note' => ''],
-        ['scope' => 'student', 'title' => 'Student / under 30', 'description' => 'Displays student-discount members and a second grid of members under 30.', 'note' => ''],
-        ['scope' => 'officer', 'title' => 'Officers by year', 'description' => 'Text list of historic BEC officers grouped by club year.', 'note' => ''],
-        ['scope' => 'officer_grid_year', 'title' => 'Officer photo grid', 'description' => 'Photo grid of BEC officers grouped by club year.', 'note' => 'Use year="current" for the current committee only. Omitting year, or using year="all", shows current and earlier years. Specific numeric years are not supported.'],
-        ['scope' => 'historical_membership_list', 'title' => 'Historical membership list', 'description' => 'Text list of historic memberships grouped by club year.', 'note' => ''],
-        ['scope' => 'historical_membership_grid', 'title' => 'Historical membership photo grid', 'description' => 'Photographic grid of historical BEC members.', 'note' => ''],
-        ['scope' => 'prorata_fees', 'title' => 'Prorated membership fees', 'description' => 'Table of prorated subscription amounts by membership type and month.', 'note' => 'Legacy helper; values are retrieved from CiviCRM. Verify fees before publishing.'],
+        ['scope' => 'current', 'title' => 'Current members', 'description' => 'Photographic grid of current BEC members.', 'note' => 'This is also the default when scope is omitted.',
+            'handler' => 'display_facewall_normal_new', 'args' => ['Current members of the BEC', '< 4', '<8']],
+        ['scope' => 'probationary', 'title' => 'Probationary members', 'description' => 'Photo grid of probationary members.', 'note' => '',
+            'handler' => 'display_facewall_probationary', 'args' => ['Probationary members', '< 4', '=2']],
+        ['scope' => 'grace', 'title' => 'Members in grace', 'description' => 'Photo grid of memberships in the grace status.', 'note' => '',
+            'handler' => 'display_facewall_normal_new', 'args' => ['Grace members', '= 3', '<9']],
+        ['scope' => 'lybnty', 'title' => 'Last Year But Not This Year', 'description' => 'Photo grid of previous-year members not renewed this year.', 'note' => 'Uses the membership status configured in the existing FaceWall query.',
+            'handler' => 'display_facewall_normal_new', 'args' => ['Last Year But not this Year', '= 4', '<9']],
+        ['scope' => 'joint', 'title' => 'Joint members', 'description' => 'Joint membership pairs, including the separate unusual-pairs section.', 'note' => 'Both members must have FaceWall public visibility enabled.',
+            'handler' => 'facewall_joint_shortcode', 'args' => []],
+        ['scope' => 'life', 'title' => 'Life members', 'description' => 'Photo grid of Life, Joint Life and Honorary Life members.', 'note' => '',
+            'handler' => 'display_facewall_normal_new', 'args' => ['Life members of the BEC', '< 4', 'IN (4,5,6)']],
+        ['scope' => 'student', 'title' => 'Student / under 30', 'description' => 'Displays student-discount members and a second grid of members under 30.', 'note' => '',
+            'handler' => 'facewall_student_shortcode', 'args' => []],
+        ['scope' => 'officer', 'title' => 'Officers by year', 'description' => 'Text list of historic BEC officers grouped by club year.', 'note' => '',
+            'handler' => 'display_officer_list', 'args' => [0, 0, 0]],
+        ['scope' => 'officer_grid_year', 'title' => 'Officer photo grid', 'description' => 'Photo grid of BEC officers grouped by club year.', 'note' => 'Use year="current" for the current committee only. Omitting year, or using year="all", shows current and earlier years. Specific numeric years are not supported.',
+            'handler' => 'display_officer_grid_year', 'args' => [], 'year_attribute' => true],
+        ['scope' => 'historical_membership_list', 'title' => 'Historical membership list', 'description' => 'Text list of historic memberships grouped by club year.', 'note' => '',
+            'handler' => 'display_membership_list', 'args' => ['Historical membership list', '', '']],
+        ['scope' => 'historical_membership_grid', 'title' => 'Historical membership photo grid', 'description' => 'Photographic grid of historical BEC members.', 'note' => '',
+            'handler' => 'display_all_membership', 'args' => []],
+        ['scope' => 'prorata_fees', 'title' => 'Prorated membership fees', 'description' => 'Table of prorated subscription amounts by membership type and month.', 'note' => 'Legacy helper; values are retrieved from CiviCRM. Verify fees before publishing.',
+            'handler' => 'display_prorata_fees', 'args' => []],
     ];
+}
+
+/** Combine the regular and unusual joint-member views in the original order. */
+function facewall_joint_shortcode() {
+    return display_facewall_joint('Joint members in the BEC', '< 4', 'IN (3,5,7)')
+        . display_facewall_joint_invalid('Other Joint members in the BEC', '< 4', 'IN (3,5,7)');
+}
+
+/** Preserve the original two-section student/under-30 shortcode. */
+function facewall_student_shortcode() {
+    return display_facewall_normal_new('Members claiming student or under 30 discount', '< 4', '= 15')
+        . display_facewall_under_30('Members under 30', '< 4', '= 15');
+}
+
+/**
+ * Dispatch only registered, plugin-defined handlers. The catalog is also
+ * used for the administrator's documentation, so additions cannot drift.
+ */
+function facewall_dispatch_shortcode($atts = [], $tag = '') {
+    $options = array_change_key_case((array) $atts, CASE_LOWER);
+    $options = shortcode_atts(['scope' => 'current', 'year' => 'all'], $options, $tag);
+    $scope = $options['scope'] ?? 'current';
+    if (!is_string($scope)) {
+        return '';
+    }
+    foreach (facewall_shortcode_catalog() as $definition) {
+        if ($definition['scope'] !== $scope) {
+            continue;
+        }
+        $args = $definition['args'];
+        if (!empty($definition['year_attribute'])) {
+            $args = [$options['year']];
+        }
+        return call_user_func_array($definition['handler'], $args);
+    }
+    return '';
 }
 
 /** Keep FaceWall markup isolated from the website's own navigation and grid. */

@@ -11,6 +11,7 @@ on:
       - 'membership_fees.php'
       - 'facewall_cron.php'
       - 'includes/**'
+      - 'css/**'
       - 'tests/**'
       - '.github/workflows/facewall-php-checks.yml'
   workflow_dispatch:
@@ -48,6 +49,7 @@ jobs:
           php tests/release-b-render-snapshots.php
           php tests/release-b-renderer-regression.php
           php tests/release-c-regression.php
+          php tests/release-d-regression.php
           php tests/photo-repair-regression.php
           php tests/release-a-regression.php
 

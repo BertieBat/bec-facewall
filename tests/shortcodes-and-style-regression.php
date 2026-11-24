@@ -30,12 +30,17 @@ function assert_shortcodes($condition, $description) {
 
 require dirname(__DIR__) . '/includes/shortcodes.php';
 
-$scopes = array_column(facewall_shortcode_catalog(), 'scope');
+$catalog = facewall_shortcode_catalog();
+$scopes = array_column($catalog, 'scope');
 $source = file_get_contents(dirname(__DIR__) . '/facewall.php');
-preg_match_all('/\bcase "([^"]+)":/', $source, $matches);
-$live = array_values(array_diff($matches[1], ['membership_fees']));
 assert_shortcodes(count($scopes) === count(array_unique($scopes)), 'Shortcode catalog contains duplicates');
-assert_shortcodes($scopes === $live, 'Shortcode catalog is out of sync with live scope switch');
+assert_shortcodes(strpos($source, 'return facewall_dispatch_shortcode($atts, $tag);') !== false,
+    'The main WordPress shortcode must be dispatched from the documented registry');
+foreach ($catalog as $entry) {
+    assert_shortcodes(isset($entry['handler'], $entry['args']) &&
+        is_string($entry['handler']) && is_array($entry['args']),
+        'Shortcode documentation is missing runtime handler details');
+}
 
 $normal = facewall_render_shortcode([]);
 assert_shortcodes(strpos($normal, 'facewall-display facewall-scope-current') !== false,

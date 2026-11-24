@@ -135,18 +135,12 @@
   .facewall-display .items-row.bec_members_row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .facewall-display.facewall-scope-joint .items-row.bec_members_row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 600px) {
   .facewall-display .items-row.bec_members_row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: .75rem;
-  }
-  .facewall-display.facewall-scope-joint .items-row.bec_members_row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
