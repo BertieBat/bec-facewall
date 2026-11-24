@@ -129,10 +129,10 @@ display_facewall_under_30('Under 30', '< 4', '< 9');
 release_a_assert(strpos($wpdb->last_query, "c.birth_date > DATE_SUB('2026-10-03', INTERVAL 30 YEAR)") !== false,
     'Under-30 view must exclude someone turning exactly 30 on AGM day');
 display_officer_grid_year('current');
-release_a_assert(strpos($wpdb->last_query, 'club_year = 2027') !== false,
+release_a_assert(preg_match('/`?club_year`?\\s*=\\s*2027/', $wpdb->last_query) === 1,
     'Current officer grid did not switch to 2027 on AGM day');
 display_officer_grid_year('all');
-release_a_assert(strpos($wpdb->last_query, 'club_year <= 2027') !== false,
+release_a_assert(preg_match('/`?club_year`?\\s*<=\\s*2027/', $wpdb->last_query) === 1,
     'Historical officer grid used a different year boundary');
 display_officer_list(0, 0, 0);
 release_a_assert(strpos($wpdb->last_query, 'club_year') !== false &&
