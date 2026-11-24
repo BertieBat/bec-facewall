@@ -20,7 +20,6 @@ defined('ABSPATH') || exit;
  * function membership_details($row, $memberships)
  * function display_officer_list($fw_title, $fw_mem_status, $fw_mem_type)
  * function display_officer_grid_year($year)
- * function facewall_pad_grid($column, $max_column, $html_output)
  * function build_officer_historical_table($a)
  * function build_BEC_historical_summary_table($a)
  */
@@ -801,29 +800,6 @@ function display_officer_grid_year($year)
 	return  $facewall_output;
 	
 }
-
-function facewall_pad_grid($column, $max_column, $html_output)
-{
-	while ($column <= $max_column) 	{
-		if ($column == 1) 
-		{
-			break;
-		}
-		$html_output .= '<div class="span2">';    
-	        $html_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-		$html_output .= '<div class="page-header">';
-		$html_output .= '</div>';
-		$html_output .= '</div>';
-		$html_output .= '</div>';
-		$column++;
-	} 
-	// and then if we are at the end of the columns reset it to the first div again
-	if ($column == 6) {
-		$html_output .= '</div>';
-	}
-	return $html_output;
-}
-
 
 function build_officer_historical_table()
 {
