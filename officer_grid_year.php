@@ -34,7 +34,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, hist.summary, cust.facewall_public_84
+	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, COALESCE(NULLIF(hist.image_URL, ''), c.image_URL) AS image_URL, hist.summary, cust.facewall_public_84
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
@@ -152,7 +152,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	//$sql = "SELECT * FROM members WHERE birthdate <= '".date("Y-m-d", $lastAGM)."' AND (DATEDIFF('".date("Y-m-d", $lastAGM)."', birthdate) / 365.25) < $ageLimit";
 
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, COALESCE(NULLIF(hist.image_URL, ''), c.image_URL) AS image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
@@ -258,7 +258,7 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, hist.image_URL, hist.summary
+	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, COALESCE(NULLIF(hist.image_URL, ''), c.image_URL) AS image_URL, hist.summary
 		from civicrm_contact AS c
 		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
 		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
@@ -416,7 +416,8 @@ function display_all_membership()
 	
 	global $wpdb;
 	$facewall_output = '';
-	$final_query = ("SELECT hist.* FROM civicrm_BEC_historical_summary AS hist
+	$final_query = ("SELECT hist.*, COALESCE(NULLIF(hist.image_URL, ''), c.image_URL) AS resolved_image_URL FROM civicrm_BEC_historical_summary AS hist
+		INNER JOIN civicrm_contact AS c ON c.id = hist.contact_id
 		INNER JOIN custom_value_1_BEC AS consent ON consent.entity_id = hist.contact_id AND consent.facewall_public_84 = 1
 		ORDER BY hist.id DESC");
 
@@ -476,7 +477,7 @@ function display_all_membership()
 			$facewall_output .= '</div>';
 			
 			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row->image_URL, $row->display_name, true);
+			$facewall_output .= facewall_photo_html($row->resolved_image_URL, $row->display_name, true);
 				//
 			//$facewall_output .= $image_URL;
 			// cleanup the divs and increment counters
@@ -1109,14 +1110,15 @@ function build_BEC_historical_summary_table()
 			$memberships = consolidateArray($memberships);
 
 
-			// The cron may generate thumbnails only for affirmative FaceWall opt-ins.
+			// Retain a validated photo reference for consenting members EVEN
+			// when thumbnail generation cannot run (missing file, permissions
+			// or absent full-scale directory). Previously, a failed thumbnail
+			// discarded the reference entirely, hiding existing cached images.
 			$photo_name = facewall_image_filename($row->image_URL);
-			if (facewall_is_public($row->facewall_public_84) &&
-				$photo_name !== '' &&
-				facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name)) {
-				$new_image_URL = 'tn_' . $photo_name;
-			} else {
-				$new_image_URL = '';
+			$new_image_URL = (facewall_is_public($row->facewall_public_84) && $photo_name !== '')
+				? 'tn_' . $photo_name : '';
+			if ($new_image_URL !== '') {
+				facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name);
 			}
 
 			// work out the summary info
