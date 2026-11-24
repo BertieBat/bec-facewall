@@ -190,7 +190,13 @@ function facewall_maintenance_run($stages = null) {
         }
         $transaction = false;
         $GLOBALS['facewall_maintenance_transaction_active'] = false;
-        facewall_maintenance_record('success', '', 'All reporting tables committed together', $started, $results);
+        try {
+            facewall_maintenance_record('success', '', 'All reporting tables committed together', $started, $results);
+        } catch (Throwable $logging_error) {
+            // A completed database COMMIT must not be misreported as failed
+            // just because the optional status storage was unavailable.
+            error_log('FaceWall: committed successfully but could not save diagnostics.');
+        }
         return 'completed';
     } catch (Throwable $e) {
         $rollback_failed = false;
@@ -220,7 +226,11 @@ function facewall_maintenance_run($stages = null) {
     } finally {
         $GLOBALS['facewall_maintenance_transaction_active'] = false;
         if ($lock === 1) {
-            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock_name));
+            try {
+                $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock_name));
+            } catch (Throwable $unlock_error) {
+                error_log('FaceWall: database advisory lock could not be explicitly released.');
+            }
         }
     }
 }
