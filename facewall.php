@@ -3,7 +3,7 @@
    Plugin Name: facewall
    Plugin URI: https://github.com/speleo 
    description: Displays a custom grid facewall of active members from a CiviCRM database on Wordpress
-   Version: 1.1.0
+   Version: 1.1.1
    Author: Henry Bennett
    Author URI: https://github.com/speleo
    
@@ -42,6 +42,7 @@ add_action("admin_menu", "facewall_menu");
 
 require_once __DIR__ . '/includes/maintenance.php';
 require_once __DIR__ . '/includes/diagnostics.php';
+require_once __DIR__ . '/includes/shortcodes.php';
 
 /** WordPress runs the transactional pipeline from the registered cron event. */
 function modify_database_table_cron_job() {
@@ -50,7 +51,7 @@ function modify_database_table_cron_job() {
 add_action( 'facewall_cron', 'modify_database_table_cron_job' );
 
 function shortcode_init(){
-	add_shortcode('facewall','facewall_action');
+	add_shortcode('facewall','facewall_render_shortcode');
 }
 add_action('init', 'shortcode_init');
 
