@@ -4,7 +4,7 @@ FaceWall is the BEC WordPress plugin that reads CiviCRM contact and membership
 records and displays current members, historical memberships, joint members,
 students/under-30s, probationary members, and committee officers.
 
-Release: **1.1.8** (Release D housekeeping).
+Release: **1.1.9** (poster photo recovery and coverage audit).
 
 ## Administrator screens
 
@@ -13,7 +13,10 @@ Release: **1.1.8** (Release D housekeeping).
 - **FaceWall → Diagnostics** — reporting rebuild status, scheduling and
   controlled manual queue; optional failure-alert emails.
 - **FaceWall → Photo Repair** — queue missing thumbnails in small batches,
-  for contacts explicitly consenting to public FaceWall display.
+  for contacts explicitly consenting to public FaceWall display. Its live,
+  read-only poster audit reports how many eligible members have full-size or
+  small cached photos, missing caches with originals available, or missing
+  original CiviCRM files/references.
 - **A1 / RA1 / SRA1 Poster** — administrator-only nonce-protected PDFs.
 
 Public shortcode rendering never rebuilds membership data or creates files.
@@ -76,7 +79,9 @@ The FaceWall Public custom field (facewall_public_84) must equal 1.
 Joint members both need affirmative consent. Only validated local JPEG/PNG
 thumbnails are displayed. Small photographs are in
 wp-content/uploads/civicrm/custom/tn/174/ and larger poster copies
-are in tn/full_scale/. A historical photo reference takes priority
+are in tn/full_scale/. **PDF posters prefer the full-size copy but fall back
+read-only to the smaller cached photo rather than the lamp when the poster
+copy is missing.** A historical photo reference takes priority
 where provided; some views fall back to the current CiviCRM photo.
 
 Public pages never create thumbnails or fetch arbitrary image URLs.
