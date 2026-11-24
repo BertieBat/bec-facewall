@@ -39,6 +39,7 @@ global $wpdb;
 $wpdb = new FacewallTestDatabase();
 $membership = (object) [
     'cv_start_date' => '2025-01-01',
+    'cv_join_date' => '0000-00-00',
     'cv_end_date' => '2025-09-30',
     'cv_contact_id' => 42,
     'cv_display_name' => "O'Connor",
@@ -59,6 +60,9 @@ if (count($wpdb->queries) !== 2) {
 foreach ($wpdb->prepared as $prepared) {
     if (strpos($prepared['sql'], 'ON DUPLICATE KEY UPDATE') === false) {
         throw new RuntimeException('Membership insert is not collision-safe.');
+    }
+    if (($prepared['arguments'][3] ?? '') !== '2025-01-01') {
+        throw new RuntimeException('Invalid legacy join date was not replaced with the valid start date.');
     }
 }
 echo "FaceWall regression checks passed.\n";
