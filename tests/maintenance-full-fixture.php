@@ -231,6 +231,10 @@ fixture_assert(is_array($bad_filter) && count($bad_filter) === 0,
 
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 1,
     'Historical summary was not generated');
+fixture_assert($wpdb->get_var('SELECT summary FROM civicrm_BEC_historical_summary WHERE contact_id = 42') ===
+    'Ordinary (2024-2027)<br>Membership Sec (2024-2026)<br>',
+    'Historical membership and officer periods or their text formatting changed');
+
 fixture_assert($wpdb->get_var('SELECT image_URL FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 'tn_portrait.jpg',
     'Photo reference was lost when the source image was unavailable during the rebuild');
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_officer_membership WHERE contact_id = 42') > 0,
