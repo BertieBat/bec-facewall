@@ -35,15 +35,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary, cust.facewall_public_84
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('current', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
@@ -135,18 +127,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	//$sql = "SELECT * FROM members WHERE birthdate <= '".date("Y-m-d", $lastAGM)."' AND (DATEDIFF('".date("Y-m-d", $lastAGM)."', birthdate) / 365.25) < $ageLimit";
 
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id <9 
-			AND status_id <4 
-			AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-			AND c.birth_date > DATE_SUB('".$lastAGM."', INTERVAL 30 YEAR)
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('under30', '', '', $lastAGM);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
@@ -223,15 +204,7 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY mem.join_date, last_name, first_name");
+	$query = facewall_member_grid_query('probationary', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
