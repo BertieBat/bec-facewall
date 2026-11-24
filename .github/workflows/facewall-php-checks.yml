@@ -47,6 +47,7 @@ jobs:
           php tests/grid-markup-regression.php
           php tests/release-b-render-snapshots.php
           php tests/release-b-renderer-regression.php
+          php tests/release-c-regression.php
           php tests/photo-repair-regression.php
           php tests/release-a-regression.php
 
