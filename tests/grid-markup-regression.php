@@ -56,8 +56,18 @@ foreach ([1, 2, 5, 6, 11] as $count) {
         $GLOBALS['wpdb']->rows[] = grid_member($i);
     }
     assert_grid_markup(display_facewall_normal('Active', '< 4', '< 8'), "Legacy photo grid with $count members");
-    assert_grid_markup(display_facewall_normal_new('Active', '< 4', '< 8'), "Current photo grid with $count members");
-    assert_grid_markup(display_all_membership(), "Historical photo grid with $count members");
+    $current_grid = display_facewall_normal_new('Active', '< 4', '< 8');
+    assert_grid_markup($current_grid, "Current photo grid with $count members");
+    if (substr_count($current_grid, 'class="fw_middle"') !== $count ||
+        substr_count($current_grid, 'tabindex="0"') !== $count) {
+        throw new RuntimeException("Each current member card must have a keyboard-focusable hover overlay ($count members)");
+    }
+    $history_grid = display_all_membership();
+    assert_grid_markup($history_grid, "Historical photo grid with $count members");
+    if (substr_count($history_grid, 'class="fw_middle"') !== $count ||
+        substr_count($history_grid, 'tabindex="0"') !== $count) {
+        throw new RuntimeException("Historical member cards must retain hover and keyboard focus");
+    }
     assert_grid_markup(display_officer_grid_year('current'), "Officer photo grid with $count members");
 }
 
@@ -74,5 +84,12 @@ assert_grid_markup(display_officer_grid_year('all'), 'Officer grid with year cha
 $GLOBALS['wpdb']->rows = [grid_member(1), grid_member(2)];
 assert_grid_markup(display_facewall_joint('Joint', '< 4', 'IN (3,5,7)'), 'Joint photo grid');
 assert_grid_markup(display_facewall_joint_invalid('Joint', '< 4', 'IN (3,5,7)'), 'Unusual joint photo grid');
+$joint_standard = display_facewall_joint('Joint', '< 4', 'IN (3,5,7)');
+$joint_unusual = display_facewall_joint_invalid('Joint', '< 4', 'IN (3,5,7)');
+foreach ([$joint_standard, $joint_unusual] as $html) {
+    if (substr_count($html, 'class="fw_middle"') !== substr_count($html, 'tabindex="0"')) {
+        throw new RuntimeException('Every joint-membership history overlay must be keyboard-focusable');
+    }
+}
 
 echo "FaceWall photo grid layout and closing-tag regressions passed.\n";
