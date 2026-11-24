@@ -49,20 +49,12 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	}
 
 	// find the highest membership number in the data
-	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
 
 	// setup some variables
         $column = 1;
 	$max_column = 5;
 	$display_row = 1;
 	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	//$memberships = '';
 
 	// include CSS to format it properly
@@ -137,20 +129,12 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	}
 
 	// find the highest membership number in the data
-	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
 
 	// setup some variables
         $column = 1;
 	$max_column = 5;
 	$display_row = 1;
 	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	//$memberships = '';
 
 	// include CSS to format it properly
@@ -214,20 +198,12 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	}
 
 	// find the highest membership number in the data
-	$current_mem_num = max(array_column($final, 'Membership_Number'))+1;
 
 	// setup some variables
         $column = 1;
 	$max_column = 5;
 	$display_row = 1;
 	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	//$memberships = '';
 
 	// include CSS to format it properly
@@ -355,13 +331,6 @@ function display_all_membership()
 	$max_column = 5;
 	$display_row = 1;
 	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 	//$memberships = '';
 
 	// include CSS to format it properly
@@ -664,13 +633,6 @@ function display_officer_grid_year($year)
 	$max_column = 5;
 	$display_row = 1;
 	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
 
 	// include CSS to format it properly
 
