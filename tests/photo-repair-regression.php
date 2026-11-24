@@ -55,6 +55,9 @@ class FacewallPhotoTestDB {
             (object) ['id' => 3, 'image_URL' => '../unsafe.jpg'],
             (object) ['id' => 4, 'image_URL' => 'missing.jpg'],
             (object) ['id' => 5, 'image_URL' => 'script.svg'],
+            (object) ['id' => 6, 'image_URL' => 'only-small.jpg'],
+            (object) ['id' => 7, 'image_URL' => 'only-full.jpg'],
+            (object) ['id' => 8, 'image_URL' => 'orphan-small.jpg'],
         ];
     }
     public function query($sql) { throw new RuntimeException('Photo repair must never write to member DB tables'); }
@@ -79,12 +82,21 @@ $small = $base . '/tn/174';
 $full = $base . '/tn/full_scale';
 test_photo(mkdir($small, 0700, true), 'Could not make test thumbnail directory');
 test_photo(mkdir($full, 0700, true), 'Could not make test poster directory');
-file_put_contents($small . '/tn_cached.jpg', 'existing thumbnail; original deliberately absent');
+// Fully cached without source should still count as complete.
+file_put_contents($small . '/tn_cached.jpg', 'existing grid thumbnail');
+file_put_contents($full . '/tn_cached.jpg', 'existing poster image; original deliberately absent');
+// An incomplete small-only cache without the original cannot be repaired.
+file_put_contents($small . '/tn_orphan-small.jpg', 'orphan small thumbnail');
+// Existing files must remain untouched when the other size is generated.
+file_put_contents($small . '/tn_only-small.jpg', 'original small thumbnail');
+file_put_contents($full . '/tn_only-full.jpg', 'original full thumbnail');
 
 test_photo(function_exists('imagecreatetruecolor') && function_exists('imagejpeg'),
     'CI PHP must have GD enabled for photo generation regression');
 $image = imagecreatetruecolor(300, 280);
 imagejpeg($image, $base . '/camera photo (1).jpg');
+imagejpeg($image, $base . '/only-small.jpg');
+imagejpeg($image, $base . '/only-full.jpg');
 imagedestroy($image);
 
 test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknown.jpg') !== false,
@@ -93,13 +105,23 @@ test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknow
 facewall_photo_repair_batch();
 $status = facewall_photo_repair_status();
 test_photo(($status['state'] ?? '') === 'completed', 'Small repair batch did not complete');
-foreach (['checked' => 5, 'existing' => 1, 'created' => 1, 'invalid' => 2, 'failed' => 1] as $field => $count) {
+foreach (['checked' => 8, 'existing' => 1, 'created' => 3, 'invalid' => 2, 'failed' => 2] as $field => $count) {
     test_photo(($status[$field] ?? null) === $count,
         'Photo repair ' . $field . ' expected ' . $count . ', got ' . ($status[$field] ?? 'unset'));
 }
 test_photo(is_file($small . '/tn_camera photo (1).jpg'), 'Consented missing thumbnail was not recreated');
 test_photo(is_file($full . '/tn_camera photo (1).jpg'), 'Full-scale cached photo was not recreated');
-test_photo(is_file($small . '/tn_cached.jpg'), 'Existing thumbnail was overwritten or deleted');
+test_photo(is_file($small . '/tn_cached.jpg') && is_file($full . '/tn_cached.jpg'),
+    'A complete cache was deleted');
+test_photo(is_file($full . '/tn_only-small.jpg') &&
+    file_get_contents($small . '/tn_only-small.jpg') === 'original small thumbnail',
+    'Missing full-size copy was not restored or existing small thumbnail was overwritten');
+test_photo(is_file($small . '/tn_only-full.jpg') &&
+    file_get_contents($full . '/tn_only-full.jpg') === 'original full thumbnail',
+    'Missing small copy was not restored or existing poster thumbnail was overwritten');
+test_photo(is_file($small . '/tn_orphan-small.jpg') &&
+    !is_file($full . '/tn_orphan-small.jpg'),
+    'An orphan small thumbnail was incorrectly considered a complete cache');
 test_photo(strpos(json_encode($status), 'camera photo') === false &&
     strpos(json_encode($status), 'contact_id') === false &&
     strpos(json_encode($status), 'image_URL') === false,
@@ -133,8 +155,14 @@ test_photo($lock_failure['state'] === 'failed' &&
     strpos((string) $lock_failure['error'], 'database') !== false,
     'Broken repair lock was silently skipped instead of reporting a failure');
 
-foreach ([$small . '/tn_cached.jpg', $small . '/tn_camera photo (1).jpg',
-    $full . '/tn_camera photo (1).jpg', $base . '/camera photo (1).jpg'] as $path) {
+foreach ([
+    $small . '/tn_cached.jpg', $full . '/tn_cached.jpg',
+    $small . '/tn_orphan-small.jpg',
+    $small . '/tn_only-small.jpg', $full . '/tn_only-small.jpg',
+    $small . '/tn_only-full.jpg', $full . '/tn_only-full.jpg',
+    $small . '/tn_camera photo (1).jpg', $full . '/tn_camera photo (1).jpg',
+    $base . '/camera photo (1).jpg', $base . '/only-small.jpg', $base . '/only-full.jpg',
+] as $path) {
     @unlink($path);
 }
 foreach ([$small, $full, $base . '/tn', $base, dirname($base),
