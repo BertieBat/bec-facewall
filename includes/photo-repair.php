@@ -99,13 +99,18 @@ function facewall_photo_repair_batch() {
                 continue;
             }
 
-            $thumbnail = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/174/tn_' . $name;
-            if (is_file($thumbnail)) {
+            // A complete FaceWall cache has TWO outputs: the small grid
+            // thumbnail and the larger cropped image used by PDF posters.
+            // Do not skip a member just because the small version exists.
+            $cache_dir = WP_CONTENT_DIR . '/uploads/civicrm/custom/tn/';
+            $thumbnail = $cache_dir . '174/tn_' . $name;
+            $poster_image = $cache_dir . 'full_scale/tn_' . $name;
+            if (is_file($thumbnail) && is_file($poster_image)) {
                 $status['existing']++;
                 continue;
             }
             if (facewall_create_thumbnail('', '', '', 174, $row->image_URL) &&
-                is_file($thumbnail)) {
+                is_file($thumbnail) && is_file($poster_image)) {
                 $status['created']++;
             } else {
                 $status['failed']++;
