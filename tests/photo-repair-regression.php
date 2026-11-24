@@ -97,7 +97,8 @@ test_photo(is_file($small . '/tn_camera photo (1).jpg'), 'Consented missing thum
 test_photo(is_file($full . '/tn_camera photo (1).jpg'), 'Full-scale cached photo was not recreated');
 test_photo(is_file($small . '/tn_cached.jpg'), 'Existing thumbnail was overwritten or deleted');
 test_photo(strpos(json_encode($status), 'camera photo') === false &&
-    strpos(json_encode($status), 'id') === false,
+    strpos(json_encode($status), 'contact_id') === false &&
+    strpos(json_encode($status), 'image_URL') === false,
     'Public diagnostic status exposed photo names or identifiers');
 
 $recovered = facewall_photo_html('tn_outdated.jpg', '"Example"', true, 'camera photo (1).jpg');
