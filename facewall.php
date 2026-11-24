@@ -40,44 +40,12 @@ function facewall_menu() {
 
 add_action("admin_menu", "facewall_menu");
 
-/**
- * Rebuild FaceWall reporting data only from the registered WP-Cron hook.
- * No public shortcode is allowed to rebuild or truncate CiviCRM tables.
- *
- * Use the site's normal PHP error log, not a world-readable plugin log file.
- */
-function modify_database_table_cron_job() {
-    global $wpdb;
-    $lock_name = 'bec_facewall_rebuild_' . get_current_blog_id();
-    $lock_acquired = (int) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock_name));
-    if ($lock_acquired !== 1) {
-        error_log('Facewall: scheduled rebuild skipped because a database lock is held.');
-        return;
-    }
+require_once __DIR__ . '/includes/maintenance.php';
+require_once __DIR__ . '/includes/diagnostics.php';
 
-    try {
-        // Build reporting history before the charts which depend on it.
-        $jobs = [
-            'historical membership' => 'build_membership_list',
-            'historical summary' => 'build_BEC_historical_summary_table',
-            'officer history' => 'build_officer_historical_table',
-            'chart data' => 'build_chart_data_tables',
-        ];
-        foreach ($jobs as $label => $function) {
-            $start = microtime(true);
-            $result = $function();
-            $elapsed = round(microtime(true) - $start, 2);
-            error_log('Facewall cron: ' . $label . ': ' . (string) $result . ' (' . $elapsed . ' seconds)');
-            if (!is_string($result) || strpos($result, ' - completed') === false) {
-                error_log('Facewall: stopping scheduled rebuild after an incomplete ' . $label . ' step.');
-                break;
-            }
-        }
-    } catch (\Throwable $e) {
-        error_log('Facewall: scheduled rebuild failed: ' . $e->getMessage());
-    } finally {
-        $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock_name));
-    }
+/** WordPress runs the transactional pipeline from the registered cron event. */
+function modify_database_table_cron_job() {
+    return facewall_maintenance_run();
 }
 add_action( 'facewall_cron', 'modify_database_table_cron_job' );
 
