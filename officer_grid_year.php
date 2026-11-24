@@ -29,21 +29,14 @@ global $wpdb;
 
 require_once __DIR__ . '/current_list.php';
 require_once __DIR__ . '/includes/calendar.php';
+require_once __DIR__ . '/includes/history.php';
 
 function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 {
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary, cust.facewall_public_84
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('current', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
@@ -135,18 +128,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	//$sql = "SELECT * FROM members WHERE birthdate <= '".date("Y-m-d", $lastAGM)."' AND (DATEDIFF('".date("Y-m-d", $lastAGM)."', birthdate) / 365.25) < $ageLimit";
 
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, c.birth_date,  mtype.name, mstatus.name AS m_status, mem.id, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(),c.birth_date)), '%Y') + 0 AS age
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id <9 
-			AND status_id <4 
-			AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-			AND c.birth_date > DATE_SUB('".$lastAGM."', INTERVAL 30 YEAR)
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('under30', '', '', $lastAGM);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
@@ -223,15 +205,7 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name),  mtype.name, mstatus.name AS m_status, mem.id, mem.join_date, hist.image_URL, c.image_URL AS contact_image_URL, hist.summary
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_BEC_historical_summary as hist ON c.id  = hist.contact_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY mem.join_date, last_name, first_name");
+	$query = facewall_member_grid_query('probationary', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$final = $wpdb->get_results($query);
@@ -903,31 +877,10 @@ function build_officer_historical_table()
 		{
 			$row = $result[$result_index];
 
-			$start_date = date("Y",strtotime($row->cv_start_date));
-			$end_date = date("Y",strtotime($row->cv_end_date));
+			$end_date = date("Y", strtotime($row->cv_end_date));
 		
-			for($x = $start_date; $x <= $end_date; $x++)
+			foreach (facewall_history_years($row->cv_start_date, $end_date) as $mem_club_year)
 			{
-				$start_time = strtotime($row->cv_start_date);
-				//if ( date("d",$start_time) == '01' && date("d",$start_time) == '10' )
-
-				if ( date("Y",$start_time) <= '1960' )
-					{
-					$mem_club_year = $x;
-					}
-				else
-					{
-						// since the club year starts in October the year before we need to skip that year 
-						// thereby just recording the major part of the year.
-						if (( date("d",$start_time) == '01' ) && ( date("m",$start_time) == '10' ) && ( date("Y",$start_time) == $x )  )
-						{
-							continue;
-						}
-						else
-						{
-							$mem_club_year = $x;
-						}
-					}
 				$insert = $wpdb->prepare(
 					"INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL) VALUES (%d, %s, %s, %d, %s, %s, %s, %d, %s)",
 					(int) $row->cv_contact_id,
@@ -955,122 +908,93 @@ function build_officer_historical_table()
 
 function build_BEC_historical_summary_table()
 {
-	if (!function_exists('facewall_maintenance_transaction_active') || !facewall_maintenance_transaction_active()) {
-		return 'build_BEC_historical_summary_table - failed (requires maintenance transaction)';
-	}
-	//gather all the data from the various tables
-	
-	global $wpdb;
-	//  use mtype to filter out BCA and discounts
-	$query=("SELECT cust.facewall_public_84, cust.Membership_Number AS mem_num, c.id AS contact_id, c.first_name, c.nick_name, c.last_name, CONCAT(c.first_name, ' ', c.last_name) AS display_name, c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
-		YEAR(mem.start_date) AS 'start', 
-		YEAR(mem.end_date) AS 'end'
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC 		AS cust 	ON c.id = cust.entity_id
-		LEFT JOIN civicrm_membership 		AS mem  	ON c.id = mem.contact_id AND mem.membership_type_id < 19
-		LEFT JOIN civicrm_membership_type 	AS mtype 	ON mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status 	AS mstatus 	ON mem.status_id = mstatus.id
-		WHERE mtype.id IN (1,2,3,4,5,6,7,18) AND status_id <90 AND is_test = 0 AND cust.Membership_Number BETWEEN 1 AND 4999
-		ORDER BY cust.Membership_Number DESC, mtype.id
-		");
-	//  inject the data back into a new table adding a row for every club year of membership.
-	$result = $wpdb->get_results($query);
-	if (!is_array($result) || !$result) {
-		error_log('FaceWall: summary source unavailable, preserving existing reporting data.');
-		return 'build_BEC_historical_summary_table - failed (source unavailable)';
-	}
+    if (!function_exists('facewall_maintenance_transaction_active') ||
+        !facewall_maintenance_transaction_active()) {
+        return 'build_BEC_historical_summary_table - failed (requires maintenance transaction)';
+    }
 
-	// setup some variables
-        $column = 1;
-	$max_column = 5;
-	$display_row = 1;
-	$display_row_div = 1;
-	$image_dir = "wp/wp-content/uploads/civicrm/custom/";
-	$base_dir = "/home/bertie/public_html/";
-	$member_dir = "images/members/";
-	$root_dir = "https://bec-cave.org.uk/";
-	$thumb_dir = "tn/";
-	$thumb_width = 174;
-	$thumb_height = 205;
-	$result_count = count($result);
+    global $wpdb;
+    // Same source and eligibility rules as before. Identity is the CiviCRM
+    // contact ID together with the BEC membership number, not the number alone.
+    $query = "SELECT cust.facewall_public_84, cust.Membership_Number AS mem_num,
+        c.id AS contact_id, c.first_name, c.nick_name, c.last_name,
+        CONCAT(c.first_name, ' ', c.last_name) AS display_name,
+        c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, mem.source,
+        YEAR(mem.start_date) AS 'start',
+        YEAR(mem.end_date) AS 'end'
+        from civicrm_contact AS c
+        LEFT JOIN custom_value_1_BEC AS cust ON c.id = cust.entity_id
+        LEFT JOIN civicrm_membership AS mem ON c.id = mem.contact_id
+            AND mem.membership_type_id < 19
+        LEFT JOIN civicrm_membership_type AS mtype ON mem.membership_type_id = mtype.id
+        LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
+        WHERE mtype.id IN (1,2,3,4,5,6,7,18)
+          AND status_id <90 AND is_test = 0
+          AND cust.Membership_Number BETWEEN 1 AND 4999
+        ORDER BY cust.Membership_Number DESC, c.id, mtype.id";
 
-	// We are going to store the output in a new table
-	// but first we are going to empty it
-	if ($wpdb->query('DELETE FROM civicrm_BEC_historical_summary') === false) {
-		error_log('Facewall: failed to clear historical summary table: ' . $wpdb->last_error);
-		return 'build_BEC_historical_summary_table - failed (delete)';
-	}
-	//---------------------------------------------------------------------------------
-	//now loop through the results and inject the data into a new table
-	for($result_index = 0; $result_index < $result_count ; $result_index++)
-		{
-			$row  = $result[$result_index];
-			if ($result_index != $result_count-1){
-				$row2 = $result[$result_index+1];
-			}
-			if (!isset($memberships)){
-				$memberships = [];	//set the array variable otherwise it is flagged as unset variable in php logs. 
-			}
+    $rows = $wpdb->get_results($query);
+    if (!is_array($rows) || !$rows) {
+        error_log('FaceWall: historical summary source unavailable; existing history preserved.');
+        return 'build_BEC_historical_summary_table - failed (source unavailable)';
+    }
 
-			// handle the year first
-			if ($result_index != $result_count-1){
-				if ($row->mem_num == $row2->mem_num){
-					$memberships = membership_details($row, $memberships);
-					continue;
-					} 
-			}
-			$memberships = membership_details($row, $memberships);
-			$memberships = consolidateArray($memberships);
+    // Verify every historical summary key BEFORE clearing committed rows.
+    // An ambiguous number must fail rather than overwrite another contact.
+    try {
+        $groups = facewall_history_summary_groups($rows);
+    } catch (Throwable $error) {
+        error_log('FaceWall: historical summary has ambiguous membership identifiers.');
+        return 'build_BEC_historical_summary_table - failed (membership identifiers)';
+    }
+    if (!$groups) {
+        return 'build_BEC_historical_summary_table - failed (source unavailable)';
+    }
 
+    if ($wpdb->query('DELETE FROM civicrm_BEC_historical_summary') === false) {
+        error_log('FaceWall: failed to clear historical summary table.');
+        return 'build_BEC_historical_summary_table - failed (delete)';
+    }
 
-			// Retain a validated photo reference for consenting members EVEN
-			// when thumbnail generation cannot run (missing file, permissions
-			// or absent full-scale directory). Previously, a failed thumbnail
-			// discarded the reference entirely, hiding existing cached images.
-			$photo_name = facewall_image_filename($row->image_URL);
-			$new_image_URL = (facewall_is_public($row->facewall_public_84) && $photo_name !== '')
-				? 'tn_' . $photo_name : '';
-			if ($new_image_URL !== '') {
-				facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name);
-			}
+    // Keep thumbnail generation as a maintenance-only action. Failures do
+    // not erase a consenting member's validated historical photo reference.
+    $base_dir = '';
+    $image_dir = '';
+    $thumb_dir = '';
+    $thumb_width = 174;
+    foreach ($groups as $group) {
+        $row = $group['last'];
+        $summary = facewall_history_summary_text($group['records']);
 
-			// work out the summary info
-			$summary = '';
-			$i = 0;
-			while($i < count($memberships))
-				{
-				$summary .= $memberships[$i]['title'].' ('. $memberships[$i]['start'].'-'. $memberships[$i]['end'].')'.'<br>';
-				$i++;
-				}	
-			// clear out the membership info or it will flow to the next.
-			unset($memberships);
-			//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-			/**
-			$insert = ("INSERT INTO civicrm_BEC_historical_summary (id, contact_id, display_name, summary, image_URL)
-				VALUES ('$row->mem_num','$row->contact_id', '$row->display_name', '$summary', '$new_image_URL')");
-			$insert_result = $wpdb->get_results($insert);
-			**/
+        $photo_name = facewall_image_filename($row->image_URL);
+        $image_reference = (facewall_is_public($row->facewall_public_84) && $photo_name !== '')
+            ? 'tn_' . $photo_name : '';
+        if ($image_reference !== '') {
+            facewall_create_thumbnail($base_dir, $image_dir, $thumb_dir, $thumb_width, $photo_name);
+        }
 
-			// Assuming $wpdb is your WordPress database object
+        $insert = $wpdb->prepare(
+            "INSERT INTO civicrm_BEC_historical_summary
+                (id, contact_id, display_name, summary, image_URL)
+             VALUES (%d, %d, %s, %s, %s)
+             ON DUPLICATE KEY UPDATE
+                contact_id = VALUES(contact_id),
+                display_name = VALUES(display_name),
+                summary = VALUES(summary),
+                image_URL = VALUES(image_URL)",
+            (int) $row->mem_num,
+            (int) $row->contact_id,
+            (string) $row->display_name,
+            $summary,
+            $image_reference
+        );
+        if ($wpdb->query($insert) === false) {
+            error_log('FaceWall: historical summary insert failed.');
+            return 'build_BEC_historical_summary_table - failed (insert)';
+        }
+    }
 
-			$insert = $wpdb->prepare(
-			    "INSERT INTO civicrm_BEC_historical_summary (id, contact_id, display_name, summary, image_URL) VALUES (%d, %d, %s, %s, %s) ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id), display_name = VALUES(display_name), summary = VALUES(summary), image_URL = VALUES(image_URL)",
-			    $row->mem_num,
-			    $row->contact_id,
-			    $row->display_name,
-			    $summary,
-			    $new_image_URL
-			);
-
-			if ($wpdb->query($insert) === false) {
-				error_log('Facewall: historical summary insert failed for membership number ' . (int) $row->mem_num . ': ' . $wpdb->last_error);
-				return 'build_BEC_historical_summary_table - failed (insert)';
-			}
-
-	}
-	$msg = "build_BEC_historical_summary_table - completed";
-	return $msg;
-
+    return 'build_BEC_historical_summary_table - completed';
 }
 
 ?>

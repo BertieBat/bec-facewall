@@ -210,8 +210,31 @@ fixture_assert(in_array(71, $under30_ids, true) && in_array(75, $under30_ids, tr
     !in_array(74, $under30_ids, true),
     'Under-30 AGM eligibility includes an exactly-30 member or excludes someone still 29');
 
+// Execute the actual shared public query in MariaDB to prove that the
+// refactor retained membership type eligibility and FaceWall consent checks.
+$public_members = $wpdb->get_results(facewall_member_grid_query('current', '< 4', '<8'));
+fixture_assert(is_array($public_members), 'Shared current-members SQL could not be executed');
+$member_numbers = array_map(static function ($row) { return (int) $row->Membership_Number; }, $public_members);
+fixture_assert(in_array(1001, $member_numbers, true) &&
+    in_array(1071, $member_numbers, true) &&
+    !in_array(1072, $member_numbers, true) &&
+    !in_array(1073, $member_numbers, true),
+    'Shared current query changed the exact BEC membership-type eligibility');
+$admin_members = $wpdb->get_results(facewall_member_grid_query('legacy', '< 4', '<9'));
+$admin_numbers = array_map(static function ($row) { return (int) $row->Membership_Number; }, $admin_members);
+fixture_assert(in_array(1072, $admin_numbers, true) &&
+    !in_array(1073, $admin_numbers, true),
+    'Legacy admin grid changed the intentional <9 membership filter');
+$bad_filter = $wpdb->get_results(facewall_member_grid_query('current', '1 OR 1=1', '<8'));
+fixture_assert(is_array($bad_filter) && count($bad_filter) === 0,
+    'Invalid query filters must not broaden public CiviCRM member access');
+
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 1,
     'Historical summary was not generated');
+fixture_assert($wpdb->get_var('SELECT summary FROM civicrm_BEC_historical_summary WHERE contact_id = 42') ===
+    'Ordinary (2024-2027)<br>Membership Sec (2024-2026)<br>',
+    'Historical membership and officer periods or their text formatting changed');
+
 fixture_assert($wpdb->get_var('SELECT image_URL FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 'tn_portrait.jpg',
     'Photo reference was lost when the source image was unavailable during the rebuild');
 fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_officer_membership WHERE contact_id = 42') > 0,
@@ -237,6 +260,30 @@ foreach ($committed as $table => $count) {
         'Real SQL failure did not roll back ' . $table);
 }
 sql_or_fail('DROP TRIGGER facewall_fixture_fail_summary');
+
+// Two different people sharing a BEC membership number cannot safely
+// occupy the legacy summary table's primary key. Refuse the rebuild before
+// deleting summaries, and roll back any prior membership-history changes.
+sql_or_fail("INSERT INTO civicrm_contact VALUES
+    (9999, 'Collision', '', 'Example', 'Collision Example', NULL, 0, NULL, '1990-01-01')");
+sql_or_fail("INSERT INTO custom_value_1_BEC VALUES (9999, 1001, 1)");
+sql_or_fail("INSERT INTO civicrm_membership VALUES
+    (9999, 9999, 1, '2024-01-01', '2024-01-01', '2027-09-30', 2, 0, 'Collision fixture')");
+fixture_assert(facewall_maintenance_run() === 'failed',
+    'Duplicate member numbers across distinct contacts must abort reporting rebuild');
+fixture_assert(get_option('facewall_maintenance_status')['failed_stage'] === 'membership_summary',
+    'Membership-number collision must fail at historical summary stage');
+foreach ($committed as $table => $count) {
+    fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM ' . $table) === $count,
+        'Collision discarded last committed reports: ' . $table);
+}
+fixture_assert((int) $wpdb->get_var('SELECT COUNT(*) FROM civicrm_BEC_historical_summary WHERE contact_id = 42') === 1,
+    'A membership number collision replaced an unrelated member summary');
+sql_or_fail('DELETE FROM civicrm_membership WHERE id = 9999');
+sql_or_fail('DELETE FROM custom_value_1_BEC WHERE entity_id = 9999');
+sql_or_fail('DELETE FROM civicrm_contact WHERE id = 9999');
+
+
 
 // Simulate inaccessible CiviCRM source and verify preflight refuses deletion.
 sql_or_fail('DROP TABLE civicrm_membership_log');

@@ -2,6 +2,7 @@
 // These functions must run inside WordPress.
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/history.php';
 /**
  * Helper class for BEC Facewall! module
  * 
@@ -159,7 +160,7 @@ function get_membership_data($query)
 				continue;
 			}
 
-			$start_date = date("Y",strtotime($row->cv_start_date));
+
 
 			// if the end date isn't set then set it to current year xxxx
 			if (empty($row->cv_end_date) || $row->cv_end_date === '0000-00-00')
@@ -171,7 +172,7 @@ function get_membership_data($query)
 			}
 		
 			// loop thru the years from start_date to end_date
-			for($x = $start_date; $x <= $end_date; $x++)
+			foreach (facewall_history_years($row->cv_start_date, $end_date) as $mem_club_year)
 			{
 				$start_time = strtotime($row->cv_start_date);
 				if (is_null($row->cv_deceased_date))
@@ -205,24 +206,6 @@ function get_membership_data($query)
 				**/
 				//  end debug
 
-				if ( date("Y",$start_time) <= '1960' )
-					{
-					$mem_club_year = $x;
-					}
-				else
-					{
-						// since the club year starts in October the year before we need to skip that year 
-						// thereby just recording the major part of the year.
-						if (( date("d",$start_time) == '01' ) && ( date("m",$start_time) == '10' ) && ( date("Y",$start_time) == $x )  )
-						{
-							continue;
-						}
-						else
-						{
-							$mem_club_year = $x;
-						}
-					}
-				
 				// loop if end date is in the next year or beyond
 				if ($mem_club_year > date("Y"))
 				{

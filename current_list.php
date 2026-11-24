@@ -2,6 +2,7 @@
 // Public views require WordPress and the shared privacy helpers.
 defined('ABSPATH') || exit;
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/member-query.php';
 require_once __DIR__ . '/includes/render.php';
 /**
  * Helper class for BEC Facewall! module
@@ -22,14 +23,7 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$facewall_output = '';
 
-	$query=("SELECT cust.Membership_Number, c.first_name, c.nick_name, c.last_name, CONCAT(c.last_name, c.first_name), c.image_URL, mtype.name, mstatus.name AS m_status, mem.id, cust.facewall_public_84
-		from civicrm_contact AS c
-		LEFT JOIN custom_value_1_BEC as cust ON c.id = cust.entity_id
-		LEFT JOIN civicrm_membership AS mem  ON c.id = mem.contact_id AND mem.membership_type_id < 18
-		LEFT JOIN civicrm_membership_type AS mtype ON  mem.membership_type_id = mtype.id
-		LEFT JOIN civicrm_membership_status AS mstatus ON mem.status_id = mstatus.id
-		WHERE mtype.id ".$fw_mem_type." AND status_id ".$fw_mem_status." AND c.is_deceased != 1 AND cust.facewall_public_84 = 1
-		ORDER BY last_name, first_name");
+	$query = facewall_member_grid_query('legacy', $fw_mem_status, $fw_mem_type);
 
 	// Prepare the query
 	$result = $wpdb->get_results($query);
@@ -308,28 +302,36 @@ function get_membership_info($contact_id, $show_status) {
 		return '';
 	}
 
-	// Reuse labels across the pair cards rather than querying identical types
-	// and statuses repeatedly.
+	// Memoize by contact within this request: a joint relationship can place
+	// the same contact in multiple cards. Type and status labels are also
+	// cached, so repeated displays avoid three classes of duplicate API call.
 	static $type_names = [];
 	static $status_names = [];
+	static $memberships_by_contact = [];
+	static $civicrm_ready = false;
 
 	try {
-		civicrm_initialize();
-		// Do not restrict to type 1 (Ordinary): joint members also have other
-		// membership types and possibly a separate joint discount.
-		$result = civicrm_api3('Membership', 'get', [
-			'contact_id' => $contact_id,
-			'options' => ['limit' => 0],
-		]);
-
-		if (!is_array($result) || !empty($result['is_error'])
-			|| !isset($result['values']) || !is_array($result['values'])) {
-			error_log('Facewall: invalid Membership API result for contact ' . $contact_id);
-			return '';
+		if (!array_key_exists($contact_id, $memberships_by_contact)) {
+			if (!$civicrm_ready) {
+				civicrm_initialize();
+				$civicrm_ready = true;
+			}
+			// Do not restrict to Ordinary: joint members can have several
+			// membership types, including a separate joint discount.
+			$result = civicrm_api3('Membership', 'get', [
+				'contact_id' => $contact_id,
+				'options' => ['limit' => 0],
+			]);
+			if (!is_array($result) || !empty($result['is_error'])
+				|| !isset($result['values']) || !is_array($result['values'])) {
+				error_log('FaceWall: joint membership API returned invalid data.');
+				return '';
+			}
+			$memberships_by_contact[$contact_id] = $result['values'];
 		}
 
 		$details = [];
-		foreach ($result['values'] as $membership) {
+		foreach ($memberships_by_contact[$contact_id] as $membership) {
 			if (!is_array($membership)) {
 				continue;
 			}

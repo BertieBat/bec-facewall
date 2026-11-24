@@ -94,6 +94,22 @@ foreach ($GLOBALS['facewall_test_calls'] as $call) {
 		$statusCalls++;
 	}
 }
+$membershipCalls42 = 0;
+$membershipCallsOther = 0;
+foreach ($GLOBALS['facewall_test_calls'] as $call) {
+    if ($call['entity'] !== 'Membership') {
+        continue;
+    }
+    if (($call['params']['contact_id'] ?? null) === 42) {
+        $membershipCalls42++;
+    } else {
+        $membershipCallsOther++;
+    }
+}
+expect_same(1, $membershipCalls42,
+    'A contact shown twice must only trigger one CiviCRM Membership lookup');
+expect_same(3, $membershipCallsOther,
+    'Other contacts must retain their own membership lookup and error handling');
 expect_same(2, $typeCalls, 'Type lookups should be cached between repeated renders');
 expect_same(1, $statusCalls, 'Status lookups should be cached between repeated renders');
 

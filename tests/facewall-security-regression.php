@@ -139,14 +139,17 @@ if (strpos($cron_source, "admin_post_facewall_download_poster") === false ||
 }
 
 $historical_source = file_get_contents(dirname(__DIR__) . '/membership_list.php');
-// All five public grids that read cached CiviCRM history must retain the
-// current contact photo as an optional read-only fallback for stale entries.
-if (substr_count($grid_source, 'c.image_URL AS contact_image_URL') < 5 ||
+// Release C centralizes the three historic-backed member-grid projections
+// and their mandatory consent predicates. The separate officer and all-time
+// history views still enforce their own consent at query time.
+$grid_query_source = file_get_contents(dirname(__DIR__) . '/includes/member-query.php');
+if (substr_count($grid_query_source, 'c.image_URL AS contact_image_URL') < 3 ||
     substr_count($grid_source, 'contact_image_URL)') < 5) {
     fail_test('Current CiviCRM image fallback is incomplete in member and officer grids');
 }
-if (substr_count($grid_source, 'facewall_public_84 = 1') < 6) {
-    fail_test('Member, historical, and officer grid SQL consent filters are incomplete');
+if (strpos($grid_query_source, 'cust.facewall_public_84 = 1') === false ||
+    substr_count($grid_source, 'facewall_public_84 = 1') < 3) {
+    fail_test('Shared member queries or historical/officer views lost their consent filters');
 }
 if (strpos($historical_source, 'consent.facewall_public_84 = 1') === false) {
     fail_test('Historical membership list does not enforce consent');
