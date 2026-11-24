@@ -71,6 +71,7 @@ function build_membership_list()
 			contact.is_deceased AS cv_is_deceased,
 			contact.deceased_date AS cv_deceased_date,
 			contact.display_name AS cv_display_name,
+			membership.join_date AS cv_join_date,
 			membership_type.name AS cv_membership_type_name,
 			sql_table.membership_type_id AS cv_membership_type_id
     
@@ -256,7 +257,8 @@ function get_membership_data($query)
 					(int) $row->cv_contact_id,
 					(string) $row->cv_display_name,
 					(int) $mem_club_year,
-					'',
+					!empty($row->cv_join_date) && strtotime($row->cv_join_date) !== false
+						? (string) $row->cv_join_date : (string) $row->cv_start_date,
 					(string) $row->cv_start_date,
 					(string) $row->cv_end_date,
 					(int) $row->cv_membership_type_id
