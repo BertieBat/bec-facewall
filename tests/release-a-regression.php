@@ -186,7 +186,7 @@ foreach ([1, 7, 10, 11, 160] as $members) {
     for ($i = 1; $i <= $members; $i++) {
         $rows[] = (object) [
             'first_name' => 'Test', 'last_name' => 'Member ' . $i,
-            'image_URL' => '', 'post' => '',
+            'image_URL' => '', 'historical_image_URL' => '', 'post' => '',
         ];
     }
     $wpdb->rows = $rows;
