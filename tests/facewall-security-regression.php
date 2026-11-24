@@ -129,6 +129,12 @@ if (strpos($cron_source, "admin_post_facewall_download_poster") === false ||
 }
 
 $historical_source = file_get_contents(dirname(__DIR__) . '/membership_list.php');
+// All five public grids that read cached CiviCRM history must retain the
+// current contact photo as an optional read-only fallback for stale entries.
+if (substr_count($grid_source, 'c.image_URL AS contact_image_URL') < 5 ||
+    substr_count($grid_source, 'contact_image_URL)') < 5) {
+    fail_test('Current CiviCRM image fallback is incomplete in member and officer grids');
+}
 if (substr_count($grid_source, 'facewall_public_84 = 1') < 6) {
     fail_test('Member, historical, and officer grid SQL consent filters are incomplete');
 }
