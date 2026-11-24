@@ -943,6 +943,9 @@ function facewall_pad_grid($column, $max_column, $html_output)
 
 function build_officer_historical_table()
 {
+	if (!function_exists('facewall_maintenance_transaction_active') || !facewall_maintenance_transaction_active()) {
+		return 'build_officer_historical_table - failed (requires maintenance transaction)';
+	}
 	//gather all the data from the various tables
 	global $wpdb;
 	$facewall_output = '';
@@ -970,19 +973,17 @@ function build_officer_historical_table()
 	//  inject the data back into a new table adding a row for every club year of membership.
 	$result = $wpdb->get_results($query);
 	
-	if (!$result) 
-	{
-		$facewall_output .= '<h2>'.$fw_title.'</h2>';
-		$facewall_output .= 'no members found matching this search';  
-		return $facewall_output;
+	if (!is_array($result) || !$result) {
+		error_log('FaceWall: officer source unavailable, preserving existing reporting data.');
+		return 'build_officer_historical_table - failed (source unavailable)';
 	}
 	$result_count = count($result);
 
 	// We are going to store the output in a new table
 	// but first we are going to empty it
-	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_officer_membership') === false) {
+	if ($wpdb->query('DELETE FROM civicrm_BEC_historical_officer_membership') === false) {
 		error_log('Facewall: failed to clear historical officer table: ' . $wpdb->last_error);
-		return 'build_officer_historical_table - failed (truncate)';
+		return 'build_officer_historical_table - failed (delete)';
 	}
 
 	//now loop through the rults and inject the data into a new table
@@ -1044,6 +1045,9 @@ function build_officer_historical_table()
 
 function build_BEC_historical_summary_table()
 {
+	if (!function_exists('facewall_maintenance_transaction_active') || !facewall_maintenance_transaction_active()) {
+		return 'build_BEC_historical_summary_table - failed (requires maintenance transaction)';
+	}
 	//gather all the data from the various tables
 	
 	global $wpdb;
@@ -1061,10 +1065,9 @@ function build_BEC_historical_summary_table()
 		");
 	//  inject the data back into a new table adding a row for every club year of membership.
 	$result = $wpdb->get_results($query);
-	if (!$result) 	{
-		$facewall_output .= '<h2>'.$fw_title.'</h2>';
-		$facewall_output .= 'no members found matching this search';  
-		return $facewall_output;
+	if (!is_array($result) || !$result) {
+		error_log('FaceWall: summary source unavailable, preserving existing reporting data.');
+		return 'build_BEC_historical_summary_table - failed (source unavailable)';
 	}
 
 	// setup some variables
@@ -1083,9 +1086,9 @@ function build_BEC_historical_summary_table()
 
 	// We are going to store the output in a new table
 	// but first we are going to empty it
-	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_summary') === false) {
+	if ($wpdb->query('DELETE FROM civicrm_BEC_historical_summary') === false) {
 		error_log('Facewall: failed to clear historical summary table: ' . $wpdb->last_error);
-		return 'build_BEC_historical_summary_table - failed (truncate)';
+		return 'build_BEC_historical_summary_table - failed (delete)';
 	}
 	//---------------------------------------------------------------------------------
 	//now loop through the results and inject the data into a new table
