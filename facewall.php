@@ -3,7 +3,7 @@
    Plugin Name: facewall
    Plugin URI: https://github.com/speleo 
    description: Displays a custom grid facewall of active members from a CiviCRM database on Wordpress
-   Version: 1.1.12
+   Version: 1.1.13
    Author: Henry Bennett
    Author URI: https://github.com/speleo
    
@@ -11,24 +11,32 @@
 
 defined( 'ABSPATH' ) || exit;
 
-// Add menu
+/**
+ * Keep FaceWall's top-level admin item, but open Diagnostics rather than
+ * generating an expensive member grid in wp-admin.
+ *
+ * Diagnostics, Photo Repair and Shortcodes register their own submenus.
+ * Poster generation remains admin-only and unchanged; the three obsolete
+ * poster navigation links are intentionally not registered.
+ */
 function facewall_menu() {
     add_menu_page(
         'FaceWall', 'FaceWall', 'manage_options', 'facewall_plugin',
-        'admin_current_list', plugins_url('/facewall/img/facewall.png')
+        'facewall_maintenance_diagnostics_page', plugins_url('/facewall/img/facewall.png')
     );
-    // Current members are the parent page; only active administrative
-    // destinations are registered here. Diagnostics, Photo Repair and
-    // Shortcodes register their own submenus in their respective modules.
-    add_submenu_page('facewall_plugin', 'A1 Poster', 'A1 Poster',
-        'manage_options', 'poster', 'admin_poster');
-    add_submenu_page('facewall_plugin', 'RA1 Poster', 'RA1 Poster',
-        'manage_options', 'poster_RA1', 'admin_poster_RA1');
-    add_submenu_page('facewall_plugin', 'SRA1 Poster', 'SRA1 Poster',
-        'manage_options', 'poster_SRA1', 'admin_poster_SRA1');
 }
+add_action('admin_menu', 'facewall_menu');
 
-add_action("admin_menu", "facewall_menu");
+/**
+ * WordPress inserts the parent page as an extra "FaceWall" submenu when the
+ * first child is registered. Remove only that duplicate after all modules
+ * have registered; retain Diagnostics, Photo Repair and Shortcodes.
+ * The parent slug is kept for existing bookmarks and plugin compatibility.
+ */
+function facewall_remove_redundant_admin_submenu() {
+    remove_submenu_page('facewall_plugin', 'facewall_plugin');
+}
+add_action('admin_menu', 'facewall_remove_redundant_admin_submenu', 999);
 
 require_once __DIR__ . '/includes/maintenance.php';
 require_once __DIR__ . '/includes/diagnostics.php';

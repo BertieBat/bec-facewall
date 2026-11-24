@@ -45,6 +45,7 @@ jobs:
           php tests/facewall-security-regression.php
           php tests/maintenance-regression.php
           php tests/shortcodes-and-style-regression.php
+          php tests/admin-menu-regression.php
           php tests/grid-markup-regression.php
           php tests/release-b-render-snapshots.php
           php tests/release-b-renderer-regression.php
