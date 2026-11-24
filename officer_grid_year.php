@@ -73,9 +73,6 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	//$memberships = '';
 
 	// include CSS to format it properly
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 	$facewall_output .= '<h2>'.$fw_title.' - '.$final_count.' members</h2>';
 
 	// then loop thru the rest of the records 
@@ -127,8 +124,10 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 		
 
 	// finally clean up the remaining divs
-	$facewall_output .= facewall_pad_grid($column, $max_column,'');
-	$facewall_output .= '</div>';
+	// CSS Grid handles partial rows; do not close a row twice.
+	if ($display_row_div !== 1) {
+		$facewall_output .= '</div>';
+	}
 	$facewall_output .= '</br>Number of records ' . $final_index ;
 	
 	return  $facewall_output;
@@ -191,9 +190,6 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 	//$memberships = '';
 
 	// include CSS to format it properly
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 	$facewall_output .= '<h2>'.$fw_title.' at the last AGM - '.$lastAGM.'<br>'.$final_count.' members</h2>';
 
 	// then loop thru the rest of the records 
@@ -245,8 +241,10 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 		
 
 	// finally clean up the remaining divs
-	$facewall_output .= facewall_pad_grid($column, $max_column,'');
-	$facewall_output .= '</div>';
+	// CSS Grid handles partial rows; do not close a row twice.
+	if ($display_row_div !== 1) {
+		$facewall_output .= '</div>';
+	}
 	$facewall_output .= '</br>Number of records ' . $final_index ;
 	
 	return  $facewall_output;
@@ -295,9 +293,6 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 	//$memberships = '';
 
 	// include CSS to format it properly
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 	$facewall_output .= '<h2>'.$fw_title.' - '.$final_count.' members</h2>';
 
 	// then loop thru the rest of the records 
@@ -398,8 +393,10 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 		
 
 	// finally clean up the remaining divs
-	$facewall_output .= facewall_pad_grid($column, $max_column,'');
-	$facewall_output .= '</div>';
+	// CSS Grid handles partial rows; do not close a row twice.
+	if ($display_row_div !== 1) {
+		$facewall_output .= '</div>';
+	}
 	$facewall_output .= '</br>Number of records ' . $final_index ;
 	
 	return  $facewall_output;
@@ -450,9 +447,6 @@ function display_all_membership()
 	//$memberships = '';
 
 	// include CSS to format it properly
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 
 	// then loop thru the rest of the records 
 	for($final_index = 0; $final_index < $final_count ; $final_index++)
@@ -503,8 +497,10 @@ function display_all_membership()
 		
 
 	// finally clean up the remaining divs
-	$facewall_output .= facewall_pad_grid($column, $max_column,'');
-	$facewall_output .= '</div>';
+	// CSS Grid handles partial rows; do not close a row twice.
+	if ($display_row_div !== 1) {
+		$facewall_output .= '</div>';
+	}
 	$facewall_output .= '</br>Number of records ' . $final_index ;
 	
 	return  $facewall_output;
@@ -782,17 +778,13 @@ function display_officer_grid_year($year)
 	$thumb_height = 205;
 
 	// include CSS to format it properly
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 
 
 	// handle the first row which contains the current year
 	$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_year_row">';  
 	$facewall_output .= '<h2>'.$club_year.'</h2></div>';
 	$display_row++;
-	// we need to pad the divs so it flows correctly since we've only taken up the first cell the rest are filled with blanks
-	$facewall_output .= facewall_pad_grid($column, $max_column, '');
+	// The year heading is a full-width row; no empty photo cells needed.
 	// then reset the column to 1
 	$column = 1;
 
@@ -806,8 +798,10 @@ function display_officer_grid_year($year)
 			{
 				$club_year = (int) $row2->club_year;
 
-				// once again we need to pad out any missing divss in the row
-				$facewall_output .= facewall_pad_grid($column, $max_column, '');
+				// Close only a partially filled row before opening a year heading.
+				if ($display_row_div !== 1) {
+					$facewall_output .= '</div>';
+				}
 				// then place the year on the page
 				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_year_row">';  
 				$facewall_output .= '<h2>'.$club_year.'</h2></div>';
@@ -910,8 +904,10 @@ function display_officer_grid_year($year)
 
 
 	// finally clean up the remaining divs
-	$facewall_output .= facewall_pad_grid($column, $max_column,'');
-	$facewall_output .= '</div>';
+	// CSS Grid handles partial rows; do not close a row twice.
+	if ($display_row_div !== 1) {
+		$facewall_output .= '</div>';
+	}
 	$facewall_output .= '</br>Number of records ' . $final_index ;
 	
 	return  $facewall_output;

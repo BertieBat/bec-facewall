@@ -56,10 +56,6 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 	$result_count = count($result);
 
 	//ob_start();
-	//$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/templates/incline/cache/top_compression_css.php">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$facewall_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 	$facewall_output .= '<h2>'.$fw_title.' - '.$result_count.' members</h2>';
 
 	for($result_index = 0; $result_index < $result_count ; $result_index++)
@@ -73,7 +69,7 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 		$facewall_output .= '<div class="span2">';    
 	        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$facewall_output .= '<div class="page-header">';
-		$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h4>';
+		$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
  		$facewall_output .= '</div>';
 		$facewall_output .= '<div class="pull-left item-image">';
 		$facewall_output .= '<a>';
@@ -90,6 +86,10 @@ function display_facewall_normal($fw_title, $fw_mem_status, $fw_mem_type)
 		  	$row_div = 1;
 		  	$facewall_output .= '</div>';  
 			}
+	}
+	// Close the last partial grid row; CSS Grid handles empty cells.
+	if ($row_div !== 1) {
+		$facewall_output .= '</div>';
 	}
 	$facewall_output .= 'Number of members ' . $result_index ;
 	//return $result;
@@ -263,10 +263,6 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 	$result_index = 0 ;
 	$result_count = count($result);
 	$member_count = 2 * $result_count;
-	//$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/templates/incline/cache/top_compression_css.php">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 
 	$joint_output .= '<h2>'.$fw_title.' - '.$member_count.' members</h2>';
 
@@ -282,7 +278,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -299,7 +295,7 @@ function display_facewall_joint_invalid($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -487,10 +483,6 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 	$result_index = 0 ;
 	$result_count = count($result);
 	$member_count = 2 * $result_count;
-	//$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/templates/incline/cache/top_compression_css.php">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/bootstrap-responsive.css">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/custom.css">';
-	$joint_output .= '<link rel="stylesheet" href="https://bec-cave.org.uk/wp/wp-content/plugins/facewall/css/facewall.css">';
 
 	$joint_output .= '<h2>'.$fw_title.' - '.$member_count.' members</h2>';
 
@@ -505,8 +497,8 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		//$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h4>';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h4>';
+		//$joint_output .= '<h5 itemprop="name" max-width=250px>'.$row->first_name.' '.$row->last_name.'</h5>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_sort_name_a).'</h5>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
@@ -526,7 +518,7 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		$joint_output .= '<div class="span2">';    
 	        $joint_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
 		$joint_output .= '<div class="page-header">';
-		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h4>';
+		$joint_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->civicrm_contact_b_sort_name_b).'</h5>';
  		$joint_output .= '</div>';
 		$joint_output .= '<div class="pull-left item-image">';
 
