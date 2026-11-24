@@ -83,7 +83,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 
 			// now place the output for each member
 			if ( $display_row_div == 1 ){ 
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_members_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row);  
 				$display_row++;
 				$display_row_div++;
 			} 
@@ -182,7 +182,7 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 
 			// now place the output for each member
 			if ( $display_row_div == 1 ){ 
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_members_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row);  
 				$display_row++;
 				$display_row_div++;
 			} 
@@ -267,7 +267,7 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 
 			// now place the output for each member
 			if ( $display_row_div == 1 ){ 
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_members_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row);  
 				$display_row++;
 				$display_row_div++;
 			} 
@@ -400,7 +400,7 @@ function display_all_membership()
 
 			// now place the output for each member
 			if ( $display_row_div == 1 ){ 
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_members_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row);  
 				$display_row++;
 				$display_row_div++;
 			} 
@@ -703,7 +703,7 @@ function display_officer_grid_year($year)
 
 
 	// handle the first row which contains the current year
-	$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_year_row">';  
+	$facewall_output .= facewall_render_grid_row_open($display_row, 'year');  
 	$facewall_output .= '<h2>'.$club_year.'</h2></div>';
 	$display_row++;
 	// The year heading is a full-width row; no empty photo cells needed.
@@ -725,7 +725,7 @@ function display_officer_grid_year($year)
 					$facewall_output .= '</div>';
 				}
 				// then place the year on the page
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_year_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row, 'year');  
 				$facewall_output .= '<h2>'.$club_year.'</h2></div>';
 				$column = 1;
 				$display_row_div = 1;
@@ -736,15 +736,11 @@ function display_officer_grid_year($year)
 			//
 			// now place the output for each post 
 			if ( $display_row_div == 1 ){ 
-				$facewall_output .= '<div class="items-row cols-4 row-'.$display_row.' row-fluid clearfix bec_members_row">';  
+				$facewall_output .= facewall_render_grid_row_open($display_row);  
 				$display_row++;
 				$display_row_div++;
 			} 
       
-			$facewall_output .= '<div class="span2">';    
-		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-			$facewall_output .= '<div class="page-header">';
-
 			// fix posts which are too long for the div
 			$display_post = $row2->post ;
 			switch ($display_post) {
@@ -756,10 +752,10 @@ function display_officer_grid_year($year)
 					break;
 			}
 
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($display_post).'</h5>';
+			
 			
 			// and then the name
-			$facewall_output .= '       '.facewall_h($row2->display_name);
+			$officer_heading_tail = '       '.facewall_h($row2->display_name);
 			$start_time = strtotime($row2->start_date);
 			$end_time = strtotime($row2->end_date);
 
@@ -781,7 +777,7 @@ function display_officer_grid_year($year)
 				{
 					if (date("Y",$start_time) == $club_year) 
 					{
-						$facewall_output .= ' - from: '.date("F j, Y ",$start_time);
+						$officer_heading_tail .= ' - from: '.date("F j, Y ",$start_time);
 					}
 				}
 				
@@ -794,26 +790,22 @@ function display_officer_grid_year($year)
 				{
 					if (date("Y",$end_time) == $club_year) 
 					{
-						$facewall_output .= ' - until: '.date("F j, Y ",$end_time);
+						$officer_heading_tail .= ' - until: '.date("F j, Y ",$end_time);
 					}
 				}
 
 			}
 
- 			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image">';
-			$facewall_output .= '<a>';
-
-			
-			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row2->image_URL, $row2->display_name, true, $row2->contact_image_URL);
-			// cleanup the divs and increment counters
-
-			$facewall_output .= '</a>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-	  		if ( $column < $max_column ){
+ 			$facewall_output .= facewall_render_member_card(
+                $column,
+                facewall_h($display_post),
+                facewall_photo_html($row2->image_URL, $row2->display_name, true, $row2->contact_image_URL),
+                null,
+                $officer_heading_tail,
+                true,
+                false
+            );
+            if ( $column < $max_column ){
 				$column++;
 			} 
 			else {
