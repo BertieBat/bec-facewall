@@ -125,7 +125,7 @@ function facewall_maintenance_queue_action() {
     // Avoid scheduling duplicate immediate one-off runs.
     $existing = wp_get_scheduled_event('facewall_cron');
     $state = 'queue_failed';
-    if ($existing && $existing->schedule === false && $existing->timestamp <= time() + 600) {
+    if ($existing && $existing->timestamp <= time() + 600) {
         $state = 'already_queued';
     } elseif (wp_schedule_single_event(time() + 60, 'facewall_cron')) {
         $state = 'queued';
