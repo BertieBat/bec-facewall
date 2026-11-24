@@ -56,6 +56,13 @@ poster_assert(facewall_full_size_thumbnail_path('small-only.jpg', true) === '',
     'Full-size path must remain a strict test of the full-size file');
 poster_assert(facewall_poster_image_path('both.jpg', true) === $full . '/tn_both.jpg',
     'Full-size must remain the preferred photo when both caches exist');
+// Live CiviCRM stores some URLs as escaped HTML, not raw URLs. The PDF
+// must resolve them to the same local cache without contacting index.php.
+$escaped_url = 'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;task=civicrm/file&amp;photo=both.jpg';
+poster_assert(facewall_poster_image_path($escaped_url, true) === $full . '/tn_both.jpg',
+    'Poster does not resolve HTML-escaped CiviCRM photo links');
+poster_assert(facewall_poster_image_path($escaped_url, false) === '',
+    'HTML-escaped poster reference bypassed public consent');
 poster_assert(facewall_poster_image_path('small-only.jpg', true) === $small . '/tn_small-only.jpg',
     'Poster discarded an existing website photo when full-size cache is missing');
 poster_assert(facewall_poster_image_path('full-only.png', true) === $full . '/tn_full-only.png',
@@ -89,13 +96,14 @@ $db->rows = [
     (object) ['id' => 16, 'display_name' => '<script>Person</script>', 'image_URL' => ''],
     (object) ['id' => 17, 'display_name' => 'Malformed', 'image_URL' => '../bad.jpg'],
     (object) ['id' => 18, 'display_name' => 'History Only', 'image_URL' => '', 'historical_image_URL' => 'both.jpg'],
+    (object) ['id' => 19, 'display_name' => 'HTML Encoded Current', 'image_URL' => $escaped_url],
 ];
 poster_assert(isset(facewall_poster_photo_audit($db)['error']) && $db->queries === [],
     'Non-admin audit must not query or reveal member records');
 $GLOBALS['poster_audit_admin'] = true;
 $audit = facewall_poster_photo_audit($db);
 $expected = [
-    'members' => 8, 'complete' => 2, 'full_only' => 1,
+    'members' => 9, 'complete' => 3, 'full_only' => 1,
     'small_only' => 1, 'needs_repair' => 1, 'alternate_source' => 0, 'no_source' => 1,
     'no_reference' => 2, 'history_selected' => 1,
 ];
