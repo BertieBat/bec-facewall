@@ -49,11 +49,16 @@ assert_shortcodes(facewall_render_shortcode(['scope' => 'not-a-view']) === '',
 assert_shortcodes(isset($GLOBALS['registered_actions']['wp_enqueue_scripts']),
     'FaceWall stylesheet must enqueue before the page HTML body');
 facewall_enqueue_public_styles();
-assert_shortcodes(count($GLOBALS['enqueued_styles']) === 1, 'Expected exactly one style');
+assert_shortcodes(count($GLOBALS['enqueued_styles']) === 2, 'Expected two FaceWall-owned styles');
 $sheet = $GLOBALS['enqueued_styles'][0];
 assert_shortcodes($sheet['handle'] === 'bec-facewall' &&
     strpos($sheet['url'], '/css/facewall.css') !== false,
-    'FaceWall must enqueue only its owned stylesheet');
+    'FaceWall grid CSS must be enqueued as the first plugin stylesheet');
+$menu_style = $GLOBALS['enqueued_styles'][1];
+assert_shortcodes($menu_style['handle'] === 'bec-facewall-menu-contrast' &&
+    strpos($menu_style['url'], '/css/facewall-menu-contrast.css') !== false &&
+    $menu_style['dependencies'] === ['bec-facewall'],
+    'Shape5 menu contrast CSS must be enqueued after the scoped grid CSS');
 
 facewall_shortcodes_menu();
 assert_shortcodes(count($GLOBALS['admin_menus']) === 1 &&
@@ -97,6 +102,34 @@ foreach ($rules[1] as $selector_group) {
             'Unscoped CSS selector could override the website menu: ' . trim($selector));
     }
 }
+// The white-on-white sticky dropdown is part of the Shape5/Vertex theme,
+// not the FaceWall photo grid. These rules must apply ONLY to pages with
+// FaceWall markup, including when the menu is floated elsewhere in <body>.
+$menu_css = file_get_contents(dirname(__DIR__) . '/css/facewall-menu-contrast.css');
+assert_shortcodes(strpos($menu_css, 'body:has(.facewall-display)') !== false,
+    'Menu contrast correction is not limited to FaceWall pages');
+assert_shortcodes(strpos($menu_css, '#s5_nav') !== false &&
+    strpos($menu_css, '#subMenusContainer') !== false &&
+    strpos($menu_css, '.s5_sub_a_span') !== false,
+    'CSS does not target both standard and floating Shape5 submenu labels');
+assert_shortcodes(strpos($menu_css, 'color: #23343c !important;') !== false &&
+    strpos($menu_css, 'color: #ffffff !important;') !== false,
+    'Menu needs a dark normal label and light text on its cyan highlight');
+assert_shortcodes(strpos($menu_css, ':focus-within') !== false,
+    'Keyboard navigation must retain visible highlighted menu text');
+$menu_css_uncommented = preg_replace('~/\\*.*?\\*/~s', '', $menu_css);
+preg_match_all('/(?:^|})\\s*([^{}]+)\\{/m', $menu_css_uncommented, $menu_rules);
+foreach ($menu_rules[1] as $selectors) {
+    $selectors = trim($selectors);
+    if (strpos($selectors, '@supports') === 0) {
+        continue;
+    }
+    foreach (explode(',', $selectors) as $selector) {
+        assert_shortcodes(strpos(trim($selector), 'body:has(.facewall-display)') === 0,
+            'Menu CSS leaks into other pages or global theme controls: ' . trim($selector));
+    }
+}
+
 foreach (['current_list.php', 'officer_grid_year.php'] as $path) {
     $php = file_get_contents(dirname(__DIR__) . '/' . $path);
     assert_shortcodes(!preg_match('/<link rel=["\x27]stylesheet["\x27]/', $php),
