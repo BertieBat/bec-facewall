@@ -61,6 +61,8 @@ class FacewallPhotoTestDB {
             (object) ['id' => 9, 'image_URL' => '', 'historical_image_URL' => 'historical-recovered.jpg'],
             (object) ['id' => 10, 'image_URL' => 'unavailable-original.jpg', 'historical_image_URL' => 'cached.jpg'],
             (object) ['id' => 11, 'image_URL' => 'https://bec-cave.org.uk/index.php?option=com_civicrm&amp;task=civicrm/file&amp;photo=encoded.jpg'],
+            (object) ['id' => 12, 'image_URL' => 'https://bec-cave.org.uk/wp/wp-content/uploads/bec-membership-photos/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg'],
+            (object) ['id' => 13, 'image_URL' => 'https://bec-cave.org.uk/wp/wp-content/uploads/bec-membership-photos/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg'],
         ];
     }
     public function query($sql) { throw new RuntimeException('Photo repair must never write to member DB tables'); }
@@ -83,8 +85,10 @@ foreach (['../etc/passwd.jpg', 'dir/%2e%2e/evil.png', 'image.svg', 'data:text/ht
 $base = WP_CONTENT_DIR . '/uploads/civicrm/custom';
 $small = $base . '/tn/174';
 $full = $base . '/tn/full_scale';
+$app_dir = WP_CONTENT_DIR . '/uploads/bec-membership-photos';
 test_photo(mkdir($small, 0700, true), 'Could not make test thumbnail directory');
 test_photo(mkdir($full, 0700, true), 'Could not make test poster directory');
+test_photo(mkdir($app_dir, 0700, true), 'Could not make approved application photo directory');
 // Fully cached without source should still count as complete.
 file_put_contents($small . '/tn_cached.jpg', 'existing grid thumbnail');
 file_put_contents($full . '/tn_cached.jpg', 'existing poster image; original deliberately absent');
@@ -102,6 +106,8 @@ imagejpeg($image, $base . '/only-small.jpg');
 imagejpeg($image, $base . '/only-full.jpg');
 imagejpeg($image, $base . '/historical-recovered.jpg');
 imagejpeg($image, $base . '/encoded.jpg');
+imagejpeg($image, $app_dir . '/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg');
+imagejpeg($image, $app_dir . '/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg');
 imagedestroy($image);
 
 test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknown.jpg') !== false,
@@ -110,7 +116,7 @@ test_photo(strpos(facewall_photo_html('old-photo.jpg', 'Missing', true), 'unknow
 facewall_photo_repair_batch();
 $status = facewall_photo_repair_status();
 test_photo(($status['state'] ?? '') === 'completed', 'Small repair batch did not complete');
-foreach (['checked' => 11, 'existing' => 2, 'created' => 5, 'invalid' => 2, 'failed' => 2] as $field => $count) {
+foreach (['checked' => 13, 'existing' => 2, 'created' => 7, 'invalid' => 2, 'failed' => 2] as $field => $count) {
     test_photo(($status[$field] ?? null) === $count,
         'Photo repair ' . $field . ' expected ' . $count . ', got ' . ($status[$field] ?? 'unset'));
 }
@@ -118,6 +124,20 @@ test_photo(is_file($small . '/tn_camera photo (1).jpg'), 'Consented missing thum
 test_photo(is_file($full . '/tn_camera photo (1).jpg'), 'Full-scale cached photo was not recreated');
 test_photo(is_file($small . '/tn_encoded.jpg') && is_file($full . '/tn_encoded.jpg'),
     'Photo Repair did not generate thumbnails from the HTML-encoded CiviCRM URL');
+foreach (['application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg', 'application-18-1ocyo3mvapv3fyb70lfi6qle.jpg'] as $application_photo) {
+    test_photo(facewall_photo_original_path($application_photo) === $app_dir . '/' . $application_photo,
+        'Approved BEC application source was not resolved to its local file');
+    test_photo(is_file($small . '/tn_' . $application_photo) &&
+        is_file($full . '/tn_' . $application_photo),
+        'BEC application photograph did not generate both FaceWall cache sizes');
+    test_photo(is_file($app_dir . '/' . $application_photo),
+        'Photo Repair modified or removed original BEC application upload');
+}
+foreach (['random.jpg', 'application-24-../wrong.jpg',
+    'application-24-evil.jpg', 'application-24-000000000000000000000000.png'] as $forbidden) {
+    test_photo(facewall_photo_original_path($forbidden) === '',
+        'Unapproved filename accessed protected application-photo directory');
+}
 test_photo(is_file($small . '/tn_historical-recovered.jpg') &&
     is_file($full . '/tn_historical-recovered.jpg'),
     'Photo Repair ignored a consenting member whose current reference was blank but historical source existed');
@@ -173,12 +193,15 @@ foreach ([
     $small . '/tn_camera photo (1).jpg', $full . '/tn_camera photo (1).jpg',
     $small . '/tn_historical-recovered.jpg', $full . '/tn_historical-recovered.jpg',
     $small . '/tn_encoded.jpg', $full . '/tn_encoded.jpg',
+    $small . '/tn_application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg', $full . '/tn_application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg',
+    $small . '/tn_application-18-1ocyo3mvapv3fyb70lfi6qle.jpg', $full . '/tn_application-18-1ocyo3mvapv3fyb70lfi6qle.jpg',
     $base . '/camera photo (1).jpg', $base . '/only-small.jpg', $base . '/only-full.jpg',
     $base . '/historical-recovered.jpg', $base . '/encoded.jpg',
+    $app_dir . '/application-24-s4mc5z2y5fhuafx6dhu0eehq.jpg', $app_dir . '/application-18-1ocyo3mvapv3fyb70lfi6qle.jpg',
 ] as $path) {
     @unlink($path);
 }
-foreach ([$small, $full, $base . '/tn', $base, dirname($base),
+foreach ([$small, $full, $app_dir, $base . '/tn', $base, dirname($base),
     dirname(dirname($base)), dirname(dirname(dirname($base)))] as $directory) {
     @rmdir($directory);
 }

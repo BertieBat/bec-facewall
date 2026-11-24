@@ -4,7 +4,7 @@ FaceWall is the BEC WordPress plugin that reads CiviCRM contact and membership
 records and displays current members, historical memberships, joint members,
 students/under-30s, probationary members, and committee officers.
 
-Release: **1.1.11** (recognise HTML-encoded CiviCRM photo URLs).
+Release: **1.1.12** (repair approved BEC application photo originals into FaceWall caches).
 
 ## Administrator screens
 
@@ -88,6 +88,15 @@ CiviCRM can store photo URLs as HTML, with `&amp;photo=` rather than
 `&photo=`. FaceWall decodes HTML entities in the query portion *before*
 extracting the image filename. It still accepts only local JPG/JPEG/PNG
 basenames after strict validation and never downloads the URL.
+
+BEC Membership Applications optimizes approved applicants' JPEG photographs into
+`wp-content/uploads/bec-membership-photos/`. Only files matching that
+workflow's precise `application-<id>-<24-character-token>.jpg` filename pattern
+may be used as additional local originals. FaceWall Photo Repair validates
+the resolved file and creates the same two cache sizes in the existing CiviCRM
+thumbnail directories; it does not move, modify or expose the source upload.
+The administrator audit now identifies missing caches whose application
+original is available.
 
 Public pages never create thumbnails or fetch arbitrary image URLs.
 Use **FaceWall → Photo Repair** to rebuild missing caches.

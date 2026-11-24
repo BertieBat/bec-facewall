@@ -70,6 +70,44 @@ function facewall_image_filename($stored) {
     return $candidate;
 }
 
+
+/**
+ * Resolve a validated CiviCRM image basename to an existing local original.
+ *
+ * The approved BEC application workflow stores its optimized JPEGs in the
+ * WordPress uploads/bec-membership-photos directory. Only its exact generated
+ * application-<number>-<token>.jpg filenames may use that second source;
+ * arbitrary CiviCRM URLs cannot read unrelated files from WordPress uploads.
+ * Never fetch remote URLs, follow a symlink outside the approved root or
+ * expose the original on a public page.
+ */
+function facewall_photo_original_path($stored) {
+    if (!defined('WP_CONTENT_DIR')) {
+        return '';
+    }
+    $filename = facewall_image_filename($stored);
+    if ($filename === '') {
+        return '';
+    }
+    $primary = WP_CONTENT_DIR . '/uploads/civicrm/custom';
+    $roots = [$primary];
+    if (preg_match('/^application-[1-9][0-9]*-[a-z0-9]{24}\.jpg$/D', $filename)) {
+        $roots[] = WP_CONTENT_DIR . '/uploads/bec-membership-photos';
+    }
+    foreach ($roots as $root) {
+        $root_real = realpath($root);
+        if ($root_real === false || !is_dir($root_real)) {
+            continue;
+        }
+        $source = realpath($root_real . '/' . $filename);
+        if ($source !== false && strpos($source, $root_real . DIRECTORY_SEPARATOR) === 0
+            && is_file($source)) {
+            return $source;
+        }
+    }
+    return '';
+}
+
 function facewall_unknown_image_html($name = '') {
     $url = function_exists('plugins_url')
         ? plugins_url('img/unknown.jpg', dirname(__DIR__) . '/facewall.php')

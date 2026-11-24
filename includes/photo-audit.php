@@ -46,6 +46,10 @@ function facewall_photo_audit_candidate($reference, $base, $configured) {
     $original = $safe_base ? realpath($safe_base . '/' . $filename) : false;
     $has_original = $original && strpos($original, $safe_base . DIRECTORY_SEPARATOR) === 0
         && is_file($original);
+    // The application workflow writes optimized portraits in a dedicated,
+    // trusted uploads folder rather than CiviCRM's custom directory.
+    $approved_original = facewall_photo_original_path($filename);
+    $application_original = !$has_original && $approved_original !== '';
     $alternate = false;
     if (!$has_original && $configured !== '' && $configured !== $safe_base) {
         $other = realpath($configured . '/' . $filename);
@@ -56,11 +60,12 @@ function facewall_photo_audit_candidate($reference, $base, $configured) {
         'filename' => $filename,
         'small' => (bool) $small,
         'full' => (bool) $full,
-        'original' => (bool) $has_original,
+        'original' => (bool) ($has_original || $application_original),
+        'application_original' => (bool) $application_original,
         'alternate' => (bool) $alternate,
         'rank' => ($small && $full ? 8 : 0)
             + ($full ? 4 : 0) + ($small ? 2 : 0)
-            + ($has_original ? 1 : 0),
+            + (($has_original || $application_original) ? 1 : 0),
     ];
 }
 
@@ -97,6 +102,7 @@ function facewall_poster_photo_audit($db) {
         'full_only' => 0,
         'small_only' => 0,
         'needs_repair' => 0,
+        'application_source' => 0,
         'alternate_source' => 0,
         'no_source' => 0,
         'no_reference' => 0,
@@ -124,6 +130,9 @@ function facewall_poster_photo_audit($db) {
             $counts['history_selected']++;
         }
 
+        if ($selected && !empty($selected['application_original'])) {
+            $counts['application_source']++;
+        }
         if (!$selected) {
             $counts['no_reference']++;
             $status = 'Neither CiviCRM nor FaceWall history has a usable photo filename';
@@ -138,7 +147,9 @@ function facewall_poster_photo_audit($db) {
             $status = 'Web thumbnail available; poster uses the smaller photo';
         } elseif ($selected['original']) {
             $counts['needs_repair']++;
-            $status = 'Original exists; both thumbnails missing (run Photo Repair)';
+            $status = !empty($selected['application_original'])
+                ? 'BEC application original exists; run Photo Repair to generate both thumbnails'
+                : 'Original exists; both thumbnails missing (run Photo Repair)';
         } elseif ($selected['alternate']) {
             $counts['alternate_source']++;
             $status = 'Original found in CiviCRM configured directory, not FaceWall expected directory';
@@ -184,7 +195,8 @@ function facewall_poster_photo_audit_html($audit) {
         'complete' => 'Both cached thumbnail sizes found',
         'full_only' => 'Only poster-size thumbnail found',
         'small_only' => 'Only small web thumbnail found',
-        'needs_repair' => 'Original available in expected folder, cache missing',
+        'needs_repair' => 'Original available in a trusted folder; cache missing',
+        'application_source' => 'Original recovered from BEC Membership Applications uploads (may overlap other counts)',
         'alternate_source' => 'Original found in a different configured CiviCRM folder',
         'no_source' => 'No thumbnail or original found',
         'no_reference' => 'No valid photograph reference in either source',
