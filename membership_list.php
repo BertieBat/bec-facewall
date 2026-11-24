@@ -37,6 +37,9 @@ function display_membership_list($fw_title, $fw_mem_status, $fw_mem_type)
 
 function build_membership_list()
 {
+	if (!function_exists('facewall_maintenance_transaction_active') || !facewall_maintenance_transaction_active()) {
+		return 'build_membership_list - failed (requires maintenance transaction)';
+	}
 	// this function is called from a cron job and is run weekly
 	// half the data comes from the membership_log but old records aren't in that
 	// so we grab those from the membership table and merge it in.
@@ -68,6 +71,7 @@ function build_membership_list()
 			contact.is_deceased AS cv_is_deceased,
 			contact.deceased_date AS cv_deceased_date,
 			contact.display_name AS cv_display_name,
+			membership.join_date AS cv_join_date,
 			membership_type.name AS cv_membership_type_name,
 			sql_table.membership_type_id AS cv_membership_type_id
     
@@ -90,9 +94,9 @@ function build_membership_list()
 		error_log('Facewall: historical membership source unavailable; existing table retained. ' . $wpdb->last_error);
 		return 'build_membership_list - skipped (source unavailable)';
 	}
-	if ($wpdb->query('TRUNCATE TABLE civicrm_BEC_historical_membership') === false) {
-		error_log('Facewall: historical membership TRUNCATE failed: ' . $wpdb->last_error);
-		return 'build_membership_list - failed (truncate)';
+	if ($wpdb->query('DELETE FROM civicrm_BEC_historical_membership') === false) {
+		error_log('Facewall: historical membership DELETE failed: ' . $wpdb->last_error);
+		return 'build_membership_list - failed (delete)';
 	}
 	if (get_membership_data($log_rows) === false || get_membership_data($old_rows) === false) {
 		return 'build_membership_list - failed (insert)';
@@ -243,6 +247,16 @@ function get_membership_data($query)
 
 
 
+				// CiviCRM legacy data can contain blank or zero join dates.
+				// Never insert an invalid date into a strict SQL DATE column.
+				$join_date = (string) ($row->cv_join_date ?? '');
+				$join_parts = explode('-', $join_date);
+				if (count($join_parts) !== 3 ||
+					!ctype_digit($join_parts[0]) || !ctype_digit($join_parts[1]) || !ctype_digit($join_parts[2]) ||
+					!checkdate((int) $join_parts[1], (int) $join_parts[2], (int) $join_parts[0])) {
+					$join_date = (string) $row->cv_start_date;
+				}
+
 				// A unique index on club_year/contact_id prevents two rows for the same
 				// member/year. Keep the membership-log row ahead of the legacy fallback.
 				$insert_query = $wpdb->prepare(
@@ -253,7 +267,7 @@ function get_membership_data($query)
 					(int) $row->cv_contact_id,
 					(string) $row->cv_display_name,
 					(int) $mem_club_year,
-					'',
+					$join_date,
 					(string) $row->cv_start_date,
 					(string) $row->cv_end_date,
 					(int) $row->cv_membership_type_id
@@ -339,30 +353,39 @@ function show_membership_data()
 
 function build_chart_data_tables()
 {
-	global $wpdb;
-	// stuff data into table for the length of tenure charts
-	$truncate_query = ("TRUNCATE TABLE civicrm_BEC_current_year");
-	$truncate = $wpdb->get_results($truncate_query);
+    if (!function_exists('facewall_maintenance_transaction_active') ||
+        !facewall_maintenance_transaction_active()) {
+        return 'build_chart_data_tables - failed (requires maintenance transaction)';
+    }
+    global $wpdb;
 
-	$final_query = ("
-		INSERT INTO civicrm_BEC_current_year
-		SELECT COUNT(*) AS mem_years, h.display_name, TIMESTAMPDIFF(YEAR, c.birth_date, CURDATE()) AS age
-			FROM `civicrm_BEC_historical_membership` as h
-        		LEFT JOIN civicrm_contact as c ON h.contact_id =c.id
-				WHERE `contact_id` IN (
-    					SELECT `contact_id` 
-					FROM `civicrm_BEC_historical_membership` 
-    					WHERE `club_year` = YEAR(CURDATE()))
-			GROUP BY `display_name`
-			ORDER BY COUNT(*) DESC
-		");
-	// Prepare the query
-	$final = $wpdb->get_results($final_query);
-	$msg = "build_chart_data_tables - completed";
-	return $msg;
+    // DELETE and INSERT run inside the same InnoDB transaction as the other
+    // history tables. Never use TRUNCATE, which implicitly commits in MySQL.
+    if ($wpdb->query('DELETE FROM civicrm_BEC_current_year') === false) {
+        error_log('FaceWall: chart data DELETE failed.');
+        return 'build_chart_data_tables - failed (delete)';
+    }
 
+    // Group by contact (not display name): people can share the same name.
+    // Aggregating the display name is compatible with ONLY_FULL_GROUP_BY.
+    $sql = "INSERT INTO civicrm_BEC_current_year (mem_years, display_name, age)
+        SELECT COUNT(*) AS mem_years, MAX(h.display_name) AS display_name,
+               TIMESTAMPDIFF(YEAR, c.birth_date, CURDATE()) AS age
+        FROM civicrm_BEC_historical_membership AS h
+        LEFT JOIN civicrm_contact AS c ON h.contact_id = c.id
+        WHERE h.contact_id IN (
+            SELECT contact_id FROM civicrm_BEC_historical_membership
+            WHERE club_year = YEAR(CURDATE())
+        )
+        GROUP BY h.contact_id, c.birth_date
+        ORDER BY mem_years DESC";
+    if ($wpdb->query($sql) === false) {
+        error_log('FaceWall: chart data insert failed.');
+        return 'build_chart_data_tables - failed (insert)';
+    }
+
+    return 'build_chart_data_tables - completed';
 }
-
 
 } // End duplicate-include guard.
 

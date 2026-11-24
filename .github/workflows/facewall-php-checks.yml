@@ -15,15 +15,23 @@ on:
       - '.github/workflows/facewall-php-checks.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   php-checks:
+    name: PHP ${{ matrix.php }} syntax and mocked regressions
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.4']
     steps:
       - uses: actions/checkout@v4
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php }}
           coverage: none
       - name: Check PHP syntax
         run: |
@@ -33,3 +41,39 @@ jobs:
           php tests/facewall-regression.php
           php tests/joint-membership-regression.php
           php tests/facewall-security-regression.php
+          php tests/maintenance-regression.php
+
+  mariadb-integration:
+    name: MariaDB transaction and rollback integration
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: facewall-ci-password
+          MARIADB_DATABASE: facewall_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      FACEWALL_TEST_DB_HOST: 127.0.0.1
+      FACEWALL_TEST_DB_PORT: '3306'
+      FACEWALL_TEST_DB_USER: root
+      FACEWALL_TEST_DB_PASSWORD: facewall-ci-password
+      FACEWALL_TEST_DB_NAME: facewall_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP with MySQL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mysqli
+          coverage: none
+      - name: Test atomic reporting rebuilds against disposable MariaDB
+        run: |
+          php tests/maintenance-mariadb.php
+          php tests/maintenance-full-fixture.php
