@@ -29,6 +29,7 @@ global $wpdb;
 
 require_once __DIR__ . '/current_list.php';
 require_once __DIR__ . '/includes/calendar.php';
+require_once __DIR__ . '/includes/history.php';
 
 function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 {
@@ -876,31 +877,10 @@ function build_officer_historical_table()
 		{
 			$row = $result[$result_index];
 
-			$start_date = date("Y",strtotime($row->cv_start_date));
-			$end_date = date("Y",strtotime($row->cv_end_date));
+			$end_date = date("Y", strtotime($row->cv_end_date));
 		
-			for($x = $start_date; $x <= $end_date; $x++)
+			foreach (facewall_history_years($row->cv_start_date, $end_date) as $mem_club_year)
 			{
-				$start_time = strtotime($row->cv_start_date);
-				//if ( date("d",$start_time) == '01' && date("d",$start_time) == '10' )
-
-				if ( date("Y",$start_time) <= '1960' )
-					{
-					$mem_club_year = $x;
-					}
-				else
-					{
-						// since the club year starts in October the year before we need to skip that year 
-						// thereby just recording the major part of the year.
-						if (( date("d",$start_time) == '01' ) && ( date("m",$start_time) == '10' ) && ( date("Y",$start_time) == $x )  )
-						{
-							continue;
-						}
-						else
-						{
-							$mem_club_year = $x;
-						}
-					}
 				$insert = $wpdb->prepare(
 					"INSERT INTO civicrm_BEC_historical_officer_membership (contact_id, display_name, post, club_year, join_date, start_date, end_date, weight, image_URL) VALUES (%d, %s, %s, %d, %s, %s, %s, %d, %s)",
 					(int) $row->cv_contact_id,
