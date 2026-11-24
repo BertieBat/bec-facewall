@@ -88,31 +88,13 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 				$display_row_div++;
 			} 
       
-			$facewall_output .= '<div class="span2">';    
-		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
-			
-			// and then the name
-			//$facewall_output .= $row->display_name;
-			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-			$facewall_output .= '<div class="fw_middle">';
-
-			// membership summary
-			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
-			$facewall_output .= '</div>';
-			
-			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL);
-			//
-			//$facewall_output .= $image_URL;
-			// cleanup the divs and increment counters
-
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-	  		if ( $column < $max_column ){
+			$facewall_output .= facewall_render_member_card(
+                $column,
+                facewall_h($row->first_name) . ' ' . facewall_h($row->last_name),
+                facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL),
+                facewall_summary_html($row->summary)
+            );
+            if ( $column < $max_column ){
 				$column++;
 			} 
 			else {
@@ -205,31 +187,13 @@ function display_facewall_under_30($fw_title, $fw_mem_status, $fw_mem_type)
 				$display_row_div++;
 			} 
       
-			$facewall_output .= '<div class="span2">';    
-		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
-			
-			// and then the name
-			//$facewall_output .= $row->display_name;
-			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-			$facewall_output .= '<div class="fw_middle">';
-
-			// membership summary
-			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
-			$facewall_output .= '</div>';
-			
-			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL);
-				//
-			// $facewall_output .= $image_URL;
-			// cleanup the divs and increment counters
-
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-	  		if ( $column < $max_column ){
+			$facewall_output .= facewall_render_member_card(
+                $column,
+                facewall_h($row->first_name) . ' ' . facewall_h($row->last_name),
+                facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL),
+                facewall_summary_html($row->summary)
+            );
+            if ( $column < $max_column ){
 				$column++;
 			} 
 			else {
@@ -354,34 +318,13 @@ function display_facewall_probationary($fw_title, $fw_mem_status, $fw_mem_type)
 
 //echo "The difference is " . $num_years . " years and " . $num_months . " months.";
 
-			$facewall_output .= '<div class="span2">';    
-		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$result.'<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
-			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$num_years.' years '.$num_months.' months<br>'.date("Y, F",strtotime($row->join_date)).'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
-			//$facewall_output .= '<h5 itemprop="name" max-width=250px>'.$row->join_date.'<br>'.facewall_h($row->first_name).' '.facewall_h($row->last_name).'</h5>';
-
-			
-			// and then the name
-			//$facewall_output .= $row->display_name;
-			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-			$facewall_output .= '<div class="fw_middle">';
-
-			// membership summary
-			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
-			$facewall_output .= '</div>';
-			
-			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL);
-				//
-			//$facewall_output .= $image_URL;
-			// cleanup the divs and increment counters
-
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-	  		if ( $column < $max_column ){
+			$facewall_output .= facewall_render_member_card(
+                $column,
+                $result . '<br>' . date("Y, F", strtotime($row->join_date)) . '<br>' . facewall_h($row->first_name) . ' ' . facewall_h($row->last_name),
+                facewall_photo_html($row->image_URL, $row->first_name.' '.$row->last_name, facewall_is_public($row->facewall_public_84), $row->contact_image_URL),
+                facewall_summary_html($row->summary)
+            );
+            if ( $column < $max_column ){
 				$column++;
 			} 
 			else {
@@ -462,31 +405,14 @@ function display_all_membership()
 				$display_row_div++;
 			} 
       
-			$facewall_output .= '<div class="span2">';    
-		        $facewall_output .= '<div class="item column-'.$column.'" itemprop="blogPost" itemscope="" itemtype="http://schema.org/BlogPosting">';
-			$facewall_output .= '<div class="page-header">';
-			$facewall_output .= '<h5 itemprop="name" max-width=250px>'.facewall_h($row->id).'</h5>';
-			
-			// and then the name
-			$facewall_output .= facewall_h($row->display_name);
-			$facewall_output .= '</div>';
-			$facewall_output .= '<div class="pull-left item-image" tabindex="0" role="group" aria-label="Hover, focus or tap to show membership information">';
-			$facewall_output .= '<div class="fw_middle">';
-
-			// membership summary
-			$facewall_output .= '<div class="text">'.facewall_summary_html($row->summary).'</div>';
-			$facewall_output .= '</div>';
-			
-			// now place their picture on the page
-			$facewall_output .= facewall_photo_html($row->image_URL, $row->display_name, true, $row->contact_image_URL);
-				//
-			//$facewall_output .= $image_URL;
-			// cleanup the divs and increment counters
-
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-			$facewall_output .= '</div>';
-	  		if ( $column < $max_column ){
+			$facewall_output .= facewall_render_member_card(
+                $column,
+                facewall_h($row->id),
+                facewall_photo_html($row->image_URL, $row->display_name, true, $row->contact_image_URL),
+                facewall_summary_html($row->summary),
+                facewall_h($row->display_name)
+            );
+            if ( $column < $max_column ){
 				$column++;
 			} 
 			else {
