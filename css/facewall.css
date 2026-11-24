@@ -98,8 +98,11 @@
   justify-content: center;
   padding: .4rem;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity .25s ease;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: opacity .25s ease, visibility .25s ease;
   text-align: center;
 }
 
@@ -111,6 +114,13 @@
 .facewall-display .item-image:hover .fw_middle,
 .facewall-display .item-image:focus-within .fw_middle {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.facewall-display .item-image:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 .facewall-display .fw_middle .text {
@@ -147,13 +157,9 @@
   }
 }
 
-/* Keep explanatory text available on touch-only screens without hover. */
-@media (hover: none) {
-  .facewall-display .fw_middle {
-    position: static;
-    display: block;
-    opacity: 1;
-    padding: .25rem 0;
-    text-align: left;
-  }
-}
+/*
+ * Never force the membership history permanently visible on touchscreens:
+ * hybrid touch laptops can still have a mouse. The image container receives
+ * keyboard focus via tabindex=0, so a tap or keyboard focus reveals the
+ * overlay without placing the text above the photo.
+ */
