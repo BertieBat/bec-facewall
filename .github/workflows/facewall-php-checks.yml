@@ -42,6 +42,7 @@ jobs:
         run: |
           php tests/facewall-regression.php
           php tests/joint-membership-regression.php
+          php tests/joint-pair-eligibility.php
           php tests/facewall-security-regression.php
           php tests/maintenance-regression.php
           php tests/shortcodes-and-style-regression.php
