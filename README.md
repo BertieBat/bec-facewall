@@ -1,23 +1,25 @@
-# FaceWall — BEC membership and officers
+# BEC FaceWall — membership and officers
 
 FaceWall is the BEC WordPress plugin that reads CiviCRM contact and membership
 records and displays current members, historical memberships, joint members,
 students/under-30s, probationary members, and committee officers.
 
-Release: **1.1.12** (repair approved BEC application photo originals into FaceWall caches).
+Repository: [BertieBat/bec-facewall](https://github.com/BertieBat/bec-facewall) (private). The installed version is defined in `bec-facewall.php`.
+
+For operational guidance see [MAINTENANCE.md](MAINTENANCE.md).
 
 ## Administrator screens
 
-- **FaceWall** — legacy read-only current-member preview.
-- **FaceWall → Shortcodes** — supported scopes, examples and notes.
-- **FaceWall → Diagnostics** — reporting rebuild status, scheduling and
+- **BEC FaceWall** — opens Diagnostics.
+- **BEC FaceWall → Shortcodes** — supported scopes, examples and notes.
+- **BEC FaceWall → Diagnostics** — reporting rebuild status, scheduling and
   controlled manual queue; optional failure-alert emails.
-- **FaceWall → Photo Repair** — queue missing thumbnails in small batches,
+- **BEC FaceWall → Photo Repair** — queue missing thumbnails in small batches,
   for contacts explicitly consenting to public FaceWall display. Its live,
   read-only poster audit reports how many eligible members have full-size or
   small cached photos, missing caches with originals available, or missing
   original CiviCRM files/references.
-- **A1 / RA1 / SRA1 Poster** — administrator-only nonce-protected PDFs.
+- A1 / RA1 / SRA1 poster generation retains its administrator-only nonce-protected download handler; the old preview and poster menu entries are no longer registered.
 
 Public shortcode rendering never rebuilds membership data or creates files.
 
@@ -99,13 +101,12 @@ The administrator audit now identifies missing caches whose application
 original is available.
 
 Public pages never create thumbnails or fetch arbitrary image URLs.
-Use **FaceWall → Photo Repair** to rebuild missing caches.
+Use **BEC FaceWall → Photo Repair** to rebuild missing caches.
 
 The hover history has TWO deliberately retained style safeguards:
 the external scoped FaceWall CSS and a minimal inline shortcode fallback,
 needed when the site's theme or CDN skips an external stylesheet.
-Do not remove either without verifying the live website. Shape5 dropdown
-correction CSS is also separate to avoid global theme side effects.
+Do not remove either without verifying the live website. The legacy Shape5/Vertex correction remains separate for compatibility. The current Colibri sticky menu colours are managed by WordPress Additional CSS.
 
 ## Database rebuild
 
@@ -119,7 +120,7 @@ All four must be InnoDB. The runner obtains an advisory lock and only commits
 the report when every stage succeeds; failures roll back all stages.
 Duplicate BEC membership numbers belonging to different contacts abort the
 rebuild rather than overwrite a person's history.
-Queue one rebuild from **FaceWall → Diagnostics**.
+Queue one rebuild from **BEC FaceWall → Diagnostics**.
 
 ## Files intentionally retained for compatibility
 
@@ -130,28 +131,10 @@ Queue one rebuild from **FaceWall → Diagnostics**.
 - facewall_cron.php is a retired, non-executable stub kept in case an old
   server cron still refers to its path. The supported hook is facewall_cron.
 
-Release D removed only unregistered admin callbacks, a no-longer-used
-pre-CSS-Grid padding function and unused assignments in read-only views.
-Public display SQL, privacy and photo priority remain unchanged.
-
 ## Testing and deployment
 
-GitHub Actions tests PHP 8.2/8.4, 41 identical Release B rendering snapshots,
-membership safety, calendars, shortcode routing and a disposable MariaDB
-transaction/rollback fixture.
+GitHub Actions runs PHP 8.2/8.4 lint and regressions, 41 rendering snapshots and disposable MariaDB transaction tests. See [MAINTENANCE.md](MAINTENANCE.md).
 
-**GitHub CI cannot validate production membership records or the live
-Shape5/Vertex menu, hover overlay, mobile view and poster appearance.**
-Follow the release deployment guide on staging first.
+Membership-type policies remain distinct: public current members use type <8; the retained legacy preview routine and poster use <9. Historical calculations retain the 1960 exception, 1 October short-year rule and AGM committee handover. Existing shortcode names, reporting tables, options, admin slugs and `facewall_cron` remain stable.
 
-After a plugin/database backup and staging check:
-
-    cd /home/bertie/public_html/wp/wp-content/plugins/bec-facewall
-    git pull --ff-only origin main
-
-Clear WordPress/CDN/browser caches and check public and admin displays.
-A GitHub merge does not automatically deploy this repository to WordPress.
-
-Prior stage notes: RELEASE_B_DEPLOYMENT.md and RELEASE_C_DEPLOYMENT.md.
-Membership-type policies are intentionally unchanged: public current
-members use type <8 while the legacy admin preview and poster use <9.
+Historical release-specific deployment notes are available in Git history.
