@@ -161,7 +161,7 @@ try {
 // Confirm static safeguards for the remaining scopes and the PDF write mode.
 $grid_source = file_get_contents(dirname(__DIR__) . '/officer_grid_year.php');
 $poster_source = file_get_contents(dirname(__DIR__) . '/poster.php');
-$cron_source = file_get_contents(dirname(__DIR__) . '/facewall.php');
+$cron_source = file_get_contents(dirname(__DIR__) . '/bec-facewall.php');
 if (strpos($cron_source, "admin_post_facewall_download_poster") === false ||
     strpos($cron_source, "check_admin_referer('facewall_download_poster')") === false ||
     strpos($cron_source, "current_user_can('manage_options')") === false) {

@@ -195,7 +195,7 @@ function get_membership_data($query)
 				//  debug
 				//
 				/**
-				$tmpfilename = '/home/bertie/public_html/wp/wp-content/plugins/facewall/facewall_debug_members_list.txt'; // Temporary file location
+				$tmpfilename = __DIR__ . '/facewall_debug_members_list.txt'; // Temporary file location
 				$f = fopen($tmpfilename, 'a+');
 				//fwrite($f,date("d/m : H:i :").$line.' ('.$execution_time.' seconds)'.PHP_EOL);
 				if ($death_time != 2025)

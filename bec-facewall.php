@@ -1,9 +1,9 @@
 <?php
 /*
-   Plugin Name: facewall
+   Plugin Name: BEC FaceWall
    Plugin URI: https://github.com/speleo 
    description: Displays a custom grid facewall of active members from a CiviCRM database on Wordpress
-   Version: 1.1.13
+   Version: 1.1.14
    Author: Henry Bennett
    Author URI: https://github.com/speleo
    
@@ -21,8 +21,8 @@ defined( 'ABSPATH' ) || exit;
  */
 function facewall_menu() {
     add_menu_page(
-        'FaceWall', 'FaceWall', 'manage_options', 'facewall_plugin',
-        'facewall_maintenance_diagnostics_page', plugins_url('/facewall/img/facewall.png')
+        'BEC FaceWall', 'BEC FaceWall', 'manage_options', 'facewall_plugin',
+        'facewall_maintenance_diagnostics_page', plugins_url('img/facewall.png', __FILE__)
     );
 }
 add_action('admin_menu', 'facewall_menu');

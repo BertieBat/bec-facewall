@@ -93,7 +93,7 @@ foreach ([
     release_d_assert(facewall_dispatch_shortcode($invalid) === '' &&
         $GLOBALS['release_d_calls'] === [], 'An unknown shortcode invoked a handler');
 }
-$main = file_get_contents(dirname(__DIR__) . '/facewall.php');
+$main = file_get_contents(dirname(__DIR__) . '/bec-facewall.php');
 release_d_assert(strpos($main, 'return facewall_dispatch_shortcode($atts, $tag);') !== false,
     'The WordPress shortcode entry point is not routed through the registry');
 foreach ([

@@ -17,7 +17,7 @@ function current_user_can($capability) { return $GLOBALS['facewall_test_is_admin
 function wp_die($message) { throw new RuntimeException('Permission denied: ' . $message); }
 function esc_attr($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
 function esc_html($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
-function plugins_url($file, $base = '') { return 'https://test.example/wp-content/plugins/facewall/' . ltrim($file, '/'); }
+function plugins_url($file, $base = '') { return 'https://test.example/wp-content/plugins/' . basename(dirname($base)) . '/' . ltrim($file, '/'); }
 function wp_enqueue_style($handle, $url, $dependencies, $version) {
     $GLOBALS['enqueued_styles'][] = compact('handle', 'url', 'dependencies', 'version');
 }
@@ -32,7 +32,7 @@ require dirname(__DIR__) . '/includes/shortcodes.php';
 
 $catalog = facewall_shortcode_catalog();
 $scopes = array_column($catalog, 'scope');
-$source = file_get_contents(dirname(__DIR__) . '/facewall.php');
+$source = file_get_contents(dirname(__DIR__) . '/bec-facewall.php');
 assert_shortcodes(count($scopes) === count(array_unique($scopes)), 'Shortcode catalog contains duplicates');
 assert_shortcodes(strpos($source, 'return facewall_dispatch_shortcode($atts, $tag);') !== false,
     'The main WordPress shortcode must be dispatched from the documented registry');
@@ -83,11 +83,11 @@ facewall_enqueue_public_styles();
 assert_shortcodes(count($GLOBALS['enqueued_styles']) === 2, 'Expected two FaceWall-owned styles');
 $sheet = $GLOBALS['enqueued_styles'][0];
 assert_shortcodes($sheet['handle'] === 'bec-facewall' &&
-    strpos($sheet['url'], '/css/facewall.css') !== false,
+    $sheet['url'] === 'https://test.example/wp-content/plugins/' . basename(dirname(__DIR__)) . '/css/facewall.css',
     'FaceWall grid CSS must be enqueued as the first plugin stylesheet');
 $menu_style = $GLOBALS['enqueued_styles'][1];
 assert_shortcodes($menu_style['handle'] === 'bec-facewall-menu-contrast' &&
-    strpos($menu_style['url'], '/css/facewall-menu-contrast.css') !== false &&
+    $menu_style['url'] === 'https://test.example/wp-content/plugins/' . basename(dirname(__DIR__)) . '/css/facewall-menu-contrast.css' &&
     $menu_style['dependencies'] === ['bec-facewall'],
     'Shape5 menu contrast CSS must be enqueued after the scoped grid CSS');
 
