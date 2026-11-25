@@ -407,7 +407,12 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 		  ON near_priv.entity_id=a.near_contact_id AND near_priv.facewall_public_84=1
 		JOIN custom_value_1_BEC AS far_priv
 		  ON far_priv.entity_id=a.far_contact_id AND far_priv.facewall_public_84=1
-		WHERE a.relationship_type_id=8 AND a.orientation='a_b'
+		WHERE (a.relationship_type_id=8 OR EXISTS (
+		    SELECT 1 FROM civicrm_relationship_type rt
+		    WHERE rt.id=a.relationship_type_id
+		      AND (LOWER(TRIM(rt.label_a_b))='partner of'
+		        OR LOWER(TRIM(rt.label_b_a))='partner of')
+		  )) AND a.orientation='a_b'
 		  AND a.is_active=1 AND (a.end_date IS NULL OR a.end_date>=CURDATE())
 		  AND near_contact_id_1.is_deceased=0
 		  AND far_contact_id_2.is_deceased=0
