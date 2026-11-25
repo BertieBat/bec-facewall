@@ -54,7 +54,7 @@ PHP functions or SQL filters.
 
 | File | Responsibility |
 | --- | --- |
-| facewall.php | Plugin bootstrap, admin menu and poster authorization |
+| bec-facewall.php | Plugin bootstrap, admin menu and poster authorization |
 | includes/shortcodes.php | Registry, dispatch, scoped CSS fallback and help screen |
 | includes/member-query.php | Shared read-only CiviCRM membership queries |
 | includes/render.php | Shared member photo cards and grid row HTML |
@@ -146,7 +146,7 @@ Follow the release deployment guide on staging first.
 
 After a plugin/database backup and staging check:
 
-    cd /home/bertie/public_html/wp/wp-content/plugins/facewall
+    cd /home/bertie/public_html/wp/wp-content/plugins/bec-facewall
     git pull --ff-only origin main
 
 Clear WordPress/CDN/browser caches and check public and admin displays.

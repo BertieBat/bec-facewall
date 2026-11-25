@@ -110,8 +110,8 @@ function facewall_photo_original_path($stored) {
 
 function facewall_unknown_image_html($name = '') {
     $url = function_exists('plugins_url')
-        ? plugins_url('img/unknown.jpg', dirname(__DIR__) . '/facewall.php')
-        : '/wp/wp-content/plugins/facewall/img/unknown.jpg';
+        ? plugins_url('img/unknown.jpg', dirname(__DIR__) . '/bec-facewall.php')
+        : '/wp/wp-content/plugins/' . rawurlencode(basename(dirname(__DIR__))) . '/img/unknown.jpg';
     return '<img src="' . facewall_h($url)
         . '" class="fw_image" width="174" height="205" loading="lazy" alt="'
         . facewall_h($name !== '' ? 'No picture for ' . $name : 'No picture') . '">';

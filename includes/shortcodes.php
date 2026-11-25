@@ -129,7 +129,7 @@ function facewall_enqueue_public_styles() {
     $file = dirname(__DIR__) . '/css/facewall.css';
     wp_enqueue_style(
         'bec-facewall',
-        plugins_url('css/facewall.css', dirname(__DIR__) . '/facewall.php'),
+        plugins_url('css/facewall.css', dirname(__DIR__) . '/bec-facewall.php'),
         [],
         is_file($file) ? (string) filemtime($file) : '1.1.2'
     );
@@ -139,7 +139,7 @@ function facewall_enqueue_public_styles() {
     $menu_file = dirname(__DIR__) . '/css/facewall-menu-contrast.css';
     wp_enqueue_style(
         'bec-facewall-menu-contrast',
-        plugins_url('css/facewall-menu-contrast.css', dirname(__DIR__) . '/facewall.php'),
+        plugins_url('css/facewall-menu-contrast.css', dirname(__DIR__) . '/bec-facewall.php'),
         ['bec-facewall'],
         is_file($menu_file) ? (string) filemtime($menu_file) : '1.1.2'
     );

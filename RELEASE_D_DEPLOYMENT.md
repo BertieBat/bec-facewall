@@ -69,7 +69,7 @@
 
 Server update after successful staging verification:
 
-    cd /home/bertie/public_html/wp/wp-content/plugins/facewall
+    cd /home/bertie/public_html/wp/wp-content/plugins/bec-facewall
     git pull --ff-only origin main
 
 No schema changes and no data migration are required. This release is

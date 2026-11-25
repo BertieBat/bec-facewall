@@ -18,7 +18,7 @@ function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
     ];
 }
 function plugins_url($path = '', $base = '') {
-    return 'https://example.test/wp-content/plugins/' . ltrim($path, '/');
+    return 'https://example.test/wp-content/plugins/' . basename(dirname($base)) . '/' . ltrim($path, '/');
 }
 function add_menu_page($title, $menu_title, $capability, $slug, $callback, $icon = '') {
     $GLOBALS['test_parent_pages'][$slug] = compact('title', 'menu_title', 'capability', 'slug', 'callback', 'icon');
@@ -56,7 +56,7 @@ function assert_admin_menu($condition, $message) {
     if (!$condition) { throw new RuntimeException($message); }
 }
 
-require dirname(__DIR__) . '/facewall.php';
+require dirname(__DIR__) . '/bec-facewall.php';
 
 assert_admin_menu(isset($GLOBALS['test_actions']['admin_menu']), 'Admin menu callbacks were not registered');
 usort($GLOBALS['test_actions']['admin_menu'], static function ($a, $b) {
@@ -68,6 +68,8 @@ foreach ($GLOBALS['test_actions']['admin_menu'] as $item) {
 
 $parent = $GLOBALS['test_parent_pages']['facewall_plugin'] ?? null;
 assert_admin_menu(is_array($parent), 'The FaceWall top-level navigation was removed');
+assert_admin_menu($parent['menu_title'] === 'BEC FaceWall', 'Renamed admin menu label is missing');
+assert_admin_menu($parent['icon'] === 'https://example.test/wp-content/plugins/' . basename(dirname(__DIR__)) . '/img/facewall.png', 'Admin icon must resolve relative to the plugin directory');
 assert_admin_menu($parent['capability'] === 'manage_options', 'FaceWall must remain administrator-only');
 assert_admin_menu($parent['callback'] === 'facewall_maintenance_diagnostics_page',
     'Clicking the FaceWall heading must open Diagnostics, not the current member grid');

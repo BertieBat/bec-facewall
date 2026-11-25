@@ -119,8 +119,8 @@ if (count($GLOBALS['wpdb']->queries) !== 2) {
     fail_test('Expected exactly two read-only Joint Members SELECT queries');
 }
 foreach ($GLOBALS['wpdb']->queries as $query) {
-    if (strpos($query, 'near_priv.facewall_public_84 = 1') === false ||
-        strpos($query, 'far_priv.facewall_public_84 = 1') === false ||
+    if (!preg_match('/\bnear_priv\.facewall_public_84\s*=\s*1\b/', $query) ||
+        !preg_match('/\bfar_priv\.facewall_public_84\s*=\s*1\b/', $query) ||
         strpos($query, 'FROM civicrm_relationship_cache') === false) {
         fail_test('Joint member queries must require both public consent flags');
     }
@@ -161,7 +161,7 @@ try {
 // Confirm static safeguards for the remaining scopes and the PDF write mode.
 $grid_source = file_get_contents(dirname(__DIR__) . '/officer_grid_year.php');
 $poster_source = file_get_contents(dirname(__DIR__) . '/poster.php');
-$cron_source = file_get_contents(dirname(__DIR__) . '/facewall.php');
+$cron_source = file_get_contents(dirname(__DIR__) . '/bec-facewall.php');
 if (strpos($cron_source, "admin_post_facewall_download_poster") === false ||
     strpos($cron_source, "check_admin_referer('facewall_download_poster')") === false ||
     strpos($cron_source, "current_user_can('manage_options')") === false) {

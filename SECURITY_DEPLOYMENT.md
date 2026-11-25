@@ -46,9 +46,9 @@ Apache 2.4+. Nginx requires equivalent web-server configuration.
 
 Check the LIVE SERVER for old files, then safely remove:
 
-- wp-content/plugins/facewall/zzpluralzalpha/ — obsolete Mailman files.
-- wp-content/plugins/facewall/facewall_cron.txt — old log.
-- wp-content/plugins/facewall/poster_output/*.pdf — previously generated PDFs.
+- wp-content/plugins/bec-facewall/zzpluralzalpha/ — obsolete Mailman files.
+- wp-content/plugins/bec-facewall/facewall_cron.txt — old log.
+- wp-content/plugins/bec-facewall/poster_output/*.pdf — previously generated PDFs.
 
 Do NOT delete wp-content/uploads/civicrm/custom; CiviCRM uses it for actual
 member photos. Consent protection limits what FaceWall outputs, but does not

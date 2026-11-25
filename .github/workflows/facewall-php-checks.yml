@@ -3,6 +3,7 @@ name: FaceWall PHP checks
 on:
   pull_request:
     paths:
+      - 'bec-facewall.php'
       - 'facewall.php'
       - 'current_list.php'
       - 'membership_list.php'

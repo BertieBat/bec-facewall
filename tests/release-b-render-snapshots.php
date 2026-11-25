@@ -14,6 +14,15 @@ function wp_date($format) {
 }
 require __DIR__ . '/grid-markup-regression.php';
 
+// The plugin directory is deliberately variable; preserve the original HTML baseline.
+function facewall_snapshot_normalize_plugin_path($html) {
+    return str_replace(
+        '/wp/wp-content/plugins/' . rawurlencode(basename(dirname(__DIR__))) . '/img/unknown.jpg',
+        '/wp/wp-content/plugins/facewall/img/unknown.jpg',
+        $html
+    );
+}
+
 function facewall_release_b_hashes() {
     global $wpdb;
     $hashes = [];
@@ -47,7 +56,7 @@ function facewall_release_b_hashes() {
                     $html
                 );
             }
-            $hashes[$prefix . $view] = hash('sha256', $html);
+            $hashes[$prefix . $view] = hash('sha256', facewall_snapshot_normalize_plugin_path($html));
         }
     }
     $wpdb->rows = [
@@ -57,7 +66,7 @@ function facewall_release_b_hashes() {
         grid_member(4, 2026),
         grid_member(5, 2025),
     ];
-    $hashes['officer-year-boundaries'] = hash('sha256', display_officer_grid_year('all'));
+    $hashes['officer-year-boundaries'] = hash('sha256', facewall_snapshot_normalize_plugin_path(display_officer_grid_year('all')));
     return $hashes;
 }
 

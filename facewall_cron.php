@@ -6,5 +6,5 @@ defined('ABSPATH') || exit;
  *
  * Do not run FaceWall reporting jobs by requesting a PHP file directly.
  * The supported entry point is the registered WordPress cron hook
- * "facewall_cron" in facewall.php, which uses a database concurrency lock.
+ * "facewall_cron" in bec-facewall.php, which uses a database concurrency lock.
  */
