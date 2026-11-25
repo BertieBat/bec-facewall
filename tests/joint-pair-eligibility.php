@@ -9,6 +9,8 @@ if ($start === FALSE) throw new RuntimeException('Public joint view missing');
 $view=substr($source,$start);
 foreach ([
   'a.relationship_type_id=8',
+  "LOWER(TRIM(rt.label_a_b))='partner of'",
+  "LOWER(TRIM(rt.label_b_a))='partner of'",
   "a.orientation='a_b'",
   'a.is_active=1',
   'near_priv.facewall_public_84=1',
