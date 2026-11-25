@@ -381,49 +381,73 @@ function display_facewall_joint($fw_title, $fw_mem_status, $fw_mem_type)
 	global $wpdb;
 	$joint_output = '';
 
-	$query=("SELECT 
-			`a`.`id` 				AS `id`, 
-			`near_contact_id_1`.`display_name` 	AS civicrm_contact_sort_name_a, 
-			`far_contact_id_2`.`display_name` 	AS civicrm_contact_b_sort_name_b,
-			`a`.`near_contact_id` 			AS `near_contact_id`,
-			`a`.`far_contact_id`			AS `far_contact_id`,
-			`a`.`relationship_id` 			AS `relationship_id`,
-			`a`.`orientation` 			AS `orientation`,
-			near_contact_id_1.image_URL 		AS civicrm_contact_image_URL_a,
-			far_contact_id_2.image_URL 		AS civicrm_contact_b_image_URL_b,
-			near_hist.summary			AS near_summary,
-			far_hist.summary			AS far_summary
-	
+	// Only display a genuinely eligible public couple. The old query required
+	// Ordinary (type 1) for both partners and ignored a Joint Discount entirely.
+	// This excluded probationary couples and could include outdated records.
+	// Keep the grace period explicitly; do not require an expiry date >= today
+	// for Grace memberships while CiviCRM considers them renewal-eligible.
+	$query=("SELECT DISTINCT
+			a.id AS id,
+			near_contact_id_1.display_name AS civicrm_contact_sort_name_a,
+			far_contact_id_2.display_name AS civicrm_contact_b_sort_name_b,
+			a.near_contact_id AS near_contact_id,
+			a.far_contact_id AS far_contact_id,
+			a.relationship_id AS relationship_id,
+			a.orientation AS orientation,
+			near_contact_id_1.image_URL AS civicrm_contact_image_URL_a,
+			far_contact_id_2.image_URL AS civicrm_contact_b_image_URL_b,
+			near_hist.summary AS near_summary,
+			far_hist.summary AS far_summary
 		FROM civicrm_relationship_cache AS a
-		LEFT JOIN civicrm_BEC_historical_summary 	AS near_hist 		ON a.near_contact_id  = near_hist.contact_id
-		LEFT JOIN civicrm_BEC_historical_summary 	AS far_hist  		ON a.far_contact_id  = far_hist.contact_id
-		LEFT JOIN civicrm_contact 			AS near_contact_id_1 	ON a.near_contact_id =  near_contact_id_1.id
-		LEFT JOIN civicrm_contact 			AS far_contact_id_2  	ON a.far_contact_id  =  far_contact_id_2.id
-		INNER JOIN custom_value_1_BEC AS near_priv ON near_priv.entity_id = a.near_contact_id AND near_priv.facewall_public_84 = 1
-		INNER JOIN custom_value_1_BEC AS far_priv ON far_priv.entity_id = a.far_contact_id AND far_priv.facewall_public_84 = 1
-
-		WHERE ( relationship_type_id = 8 
-			AND orientation = 'a_b' 
-			AND is_active = 1
-
-			AND a.near_contact_id IN (
-				SELECT mem.contact_id
-				FROM civicrm_membership AS mem
-				WHERE mem.contact_id = a.near_contact_id
-					AND mem.membership_type_id = 1
-					AND mem.status_id IN (1,2,3)
-					AND mem.is_override = 0
-				)
-       
-		       	AND a.far_contact_id IN (
-				SELECT mem.contact_id
-				FROM civicrm_membership AS mem
-				WHERE mem.contact_id = a.far_contact_id
-					AND mem.membership_type_id = 1
-					AND mem.status_id IN (1,2,3)
-				AND mem.is_override = 0
-				)
-		)");  
+		LEFT JOIN civicrm_BEC_historical_summary AS near_hist ON a.near_contact_id=near_hist.contact_id
+		LEFT JOIN civicrm_BEC_historical_summary AS far_hist ON a.far_contact_id=far_hist.contact_id
+		JOIN civicrm_contact AS near_contact_id_1 ON a.near_contact_id=near_contact_id_1.id
+		JOIN civicrm_contact AS far_contact_id_2 ON a.far_contact_id=far_contact_id_2.id
+		JOIN custom_value_1_BEC AS near_priv
+		  ON near_priv.entity_id=a.near_contact_id AND near_priv.facewall_public_84=1
+		JOIN custom_value_1_BEC AS far_priv
+		  ON far_priv.entity_id=a.far_contact_id AND far_priv.facewall_public_84=1
+		WHERE a.relationship_type_id=8 AND a.orientation='a_b'
+		  AND a.is_active=1 AND (a.end_date IS NULL OR a.end_date>=CURDATE())
+		  AND near_contact_id_1.is_deceased=0
+		  AND far_contact_id_2.is_deceased=0
+		  AND EXISTS (
+		    SELECT 1 FROM civicrm_membership m
+		    JOIN civicrm_membership_status s ON s.id=m.status_id
+		    WHERE m.contact_id=a.near_contact_id
+		      AND m.membership_type_id IN (1,2,3,4,5,6,7)
+		      AND m.is_test=0 AND m.is_override=0
+		      AND s.is_current_member=1
+		      AND (m.start_date IS NULL OR m.start_date<=CURDATE())
+		      AND (m.end_date>=CURDATE() OR s.name='Grace'
+		        OR m.membership_type_id IN (4,5,6))
+		  )
+		  AND EXISTS (
+		    SELECT 1 FROM civicrm_membership m
+		    JOIN civicrm_membership_status s ON s.id=m.status_id
+		    WHERE m.contact_id=a.far_contact_id
+		      AND m.membership_type_id IN (1,2,3,4,5,6,7)
+		      AND m.is_test=0 AND m.is_override=0
+		      AND s.is_current_member=1
+		      AND (m.start_date IS NULL OR m.start_date<=CURDATE())
+		      AND (m.end_date>=CURDATE() OR s.name='Grace'
+		        OR m.membership_type_id IN (4,5,6))
+		  )
+		  AND EXISTS (
+		    SELECT 1 FROM civicrm_membership m
+		    JOIN civicrm_membership_status s ON s.id=m.status_id
+		    WHERE m.contact_id=a.near_contact_id
+		      AND m.membership_type_id=17
+		      AND m.is_test=0 AND s.is_current_member=1
+		  )
+		  AND EXISTS (
+		    SELECT 1 FROM civicrm_membership m
+		    JOIN civicrm_membership_status s ON s.id=m.status_id
+		    WHERE m.contact_id=a.far_contact_id
+		      AND m.membership_type_id=17
+		      AND m.is_test=0 AND s.is_current_member=1
+		  )
+		ORDER BY near_contact_id_1.display_name");  
 
 	// Prepare the query
 	$result = $wpdb->get_results($query);
