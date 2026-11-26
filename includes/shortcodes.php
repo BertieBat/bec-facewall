@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
  */
 function facewall_shortcode_catalog() {
     return [
-        ['scope' => 'current', 'title' => 'Current members', 'description' => 'Photographic grid of current BEC members.', 'note' => 'This is also the default when scope is omitted. The heading shows total membership and the number publicly displayed.',
+        ['scope' => 'current', 'title' => 'Current members', 'description' => 'Photographic grid of current BEC members.', 'note' => 'This is also the default when scope is omitted. The heading shows total membership; the footer shows the number publicly displayed.',
             'handler' => 'display_facewall_normal_new', 'args' => ['Current members of the BEC', '< 4', '<8', true]],
         ['scope' => 'probationary', 'title' => 'Probationary members', 'description' => 'Photo grid of probationary members.', 'note' => '',
             'handler' => 'display_facewall_probationary', 'args' => ['Probationary members', '< 4', '=2']],
