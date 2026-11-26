@@ -30,7 +30,7 @@ require_once __DIR__ . '/current_list.php';
 require_once __DIR__ . '/includes/calendar.php';
 require_once __DIR__ . '/includes/history.php';
 
-function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
+function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type, $show_membership_total = false)
 {
 	global $wpdb;
 	$facewall_output = '';
@@ -40,12 +40,14 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	// Prepare the query
 	$final = $wpdb->get_results($query);
 	$final_count = is_array($final) ? count($final) : 0;
-	if ($final_count === 0) {
-		return '<p>No members found.</p>';
+	// Only the current-members shortcode opts in to the aggregate count.
+	$total = $show_membership_total && is_array($final) ? facewall_current_membership_total($wpdb) : null;
+	$heading = $fw_title . ' - ' . $final_count . ' members';
+	if ($total !== null && $total >= $final_count) {
+		$heading = $fw_title . ' - ' . $total . ' members (' . $final_count . ' displayed)';
 	}
-	if ($final_count == 0) {
-		$facewall_output = 'There are none';
-		return $facewall_output;
+	if ($final_count === 0) {
+		return ($total !== null ? '<h2>' . $heading . '</h2>' : '') . '<p>No members found.</p>';
 	}
 
 	// find the highest membership number in the data
@@ -58,7 +60,7 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type)
 	//$memberships = '';
 
 	// include CSS to format it properly
-	$facewall_output .= '<h2>'.$fw_title.' - '.$final_count.' members</h2>';
+	$facewall_output .= '<h2>' . $heading . '</h2>';
 
 	// then loop thru the rest of the records 
 	for($final_index = 0; $final_index < $final_count ; $final_index++)

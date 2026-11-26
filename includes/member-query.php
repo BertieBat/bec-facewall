@@ -74,3 +74,15 @@ function facewall_member_grid_query($kind, $status_filter = '', $type_filter = '
     }
     return $sql;
 }
+
+/** Aggregate only: never retrieve non-consenting members' personal data. */
+function facewall_current_membership_total($db) {
+    $sql = "SELECT COUNT(DISTINCT c.id)
+        FROM civicrm_contact AS c
+        INNER JOIN civicrm_membership AS mem ON mem.contact_id = c.id
+        INNER JOIN civicrm_membership_type AS mtype ON mtype.id = mem.membership_type_id
+        INNER JOIN civicrm_membership_status AS mstatus ON mstatus.id = mem.status_id
+        WHERE mtype.id < 8 AND mem.status_id < 4 AND c.is_deceased != 1";
+    $total = $db->get_var($sql);
+    return $total !== null && ctype_digit((string) $total) ? (int) $total : null;
+}

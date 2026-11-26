@@ -29,7 +29,7 @@ Use a WordPress Shortcode block:
 
 | Shortcode | Function |
 | --- | --- |
-| [facewall] | Current members |
+| [facewall] | Current members (total membership and public display count) |
 | [facewall scope="current"] | Current members |
 | [facewall scope="probationary"] | Probationary members |
 | [facewall scope="grace"] | Grace-status members |
