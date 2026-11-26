@@ -44,10 +44,11 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type, $s
 	$total = $show_membership_total && is_array($final) ? facewall_current_membership_total($wpdb) : null;
 	$heading = $fw_title . ' - ' . $final_count . ' members';
 	if ($total !== null && $total >= $final_count) {
-		$heading = $fw_title . ' - ' . $total . ' members (' . $final_count . ' displayed)';
+		$heading = $fw_title . ' - ' . $total . ' members';
 	}
 	if ($final_count === 0) {
-		return ($total !== null ? '<h2>' . $heading . '</h2>' : '') . '<p>No members found.</p>';
+		return ($total !== null ? '<h2>' . $heading . '</h2>' : '') . '<p>No members found.</p>'
+			. ($show_membership_total && is_array($final) ? '<p>Number of members displayed 0.</p>' : '');
 	}
 
 	// find the highest membership number in the data
@@ -97,7 +98,9 @@ function display_facewall_normal_new($fw_title, $fw_mem_status, $fw_mem_type, $s
 	if ($display_row_div !== 1) {
 		$facewall_output .= '</div>';
 	}
-	$facewall_output .= '</br>Number of records ' . $final_index ;
+	$facewall_output .= $show_membership_total
+		? '<p>Number of members displayed ' . $final_count . '.</p>'
+		: '</br>Number of records ' . $final_index;
 	
 	return  $facewall_output;
 	

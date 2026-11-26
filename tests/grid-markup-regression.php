@@ -99,7 +99,7 @@ foreach ([$joint_standard, $joint_unusual] as $html) {
 $GLOBALS['wpdb']->rows = [grid_member(1), grid_member(2)];
 $GLOBALS['wpdb']->total = '3';
 $current = display_facewall_normal_new('Current members of the BEC', '< 4', '<8', true);
-if (strpos($current, '3 members (2 displayed)') === false || substr_count($current, 'class="fw_middle"') !== 2) {
+if (strpos($current, '<h2>Current members of the BEC - 3 members</h2>') === false || strpos($current, '<p>Number of members displayed 2.</p>') === false || substr_count($current, 'class="fw_middle"') !== 2) {
     throw new RuntimeException('Current heading must distinguish total membership from public cards');
 }
 $sql = $GLOBALS['wpdb']->count_queries[0] ?? '';
@@ -107,7 +107,7 @@ if (strpos($sql, 'COUNT(DISTINCT c.id)') === false || strpos($sql, 'facewall_pub
     throw new RuntimeException('Aggregate query must count distinct eligible contacts without consent filtering');
 }
 $other = display_facewall_normal_new('Grace members', '= 3', '<9');
-if (strpos($other, '2 members</h2>') === false || count($GLOBALS['wpdb']->count_queries) !== 1) {
+if (strpos($other, '2 members</h2>') === false || strpos($other, 'Number of records 2') === false || count($GLOBALS['wpdb']->count_queries) !== 1) {
     throw new RuntimeException('Other scopes must retain their existing heading and avoid the aggregate query');
 }
 $GLOBALS['wpdb']->total = null;
@@ -116,7 +116,7 @@ if (strpos(display_facewall_normal_new('Current', '< 4', '<8', true), '2 members
 }
 $GLOBALS['wpdb']->rows = [];
 $GLOBALS['wpdb']->total = '3';
-if (strpos(display_facewall_normal_new('Current', '< 4', '<8', true), '3 members (0 displayed)') === false) {
+if (strpos($empty = display_facewall_normal_new('Current', '< 4', '<8', true), '<h2>Current - 3 members</h2>') === false || strpos($empty, 'Number of members displayed 0.') === false) {
     throw new RuntimeException('All-private membership must still show the aggregate only');
 }
 $GLOBALS['wpdb']->total = null;
