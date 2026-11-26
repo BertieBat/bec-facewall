@@ -3,7 +3,7 @@
    Plugin Name: BEC FaceWall
    Plugin URI: https://github.com/BertieBat/bec-facewall 
    description: Displays a custom grid facewall of active members from a CiviCRM database on Wordpress
-   Version: 1.1.14
+   Version: 1.1.15
    Author: Henry Bennett
    Author URI: https://github.com/speleo
    

@@ -34,7 +34,7 @@ function release_d_assert($condition, $message) {
 require dirname(__DIR__) . '/includes/shortcodes.php';
 
 $expected = [
-    'current' => [['display_facewall_normal_new', ['Current members of the BEC', '< 4', '<8']]],
+    'current' => [['display_facewall_normal_new', ['Current members of the BEC', '< 4', '<8', true]]],
     'probationary' => [['display_facewall_probationary', ['Probationary members', '< 4', '=2']]],
     'grace' => [['display_facewall_normal_new', ['Grace members', '= 3', '<9']]],
     'lybnty' => [['display_facewall_normal_new', ['Last Year But not this Year', '= 4', '<9']]],
